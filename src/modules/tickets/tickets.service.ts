@@ -131,6 +131,7 @@ export class TicketsService {
       // Create order
       const order = manager.create(Order, {
         user_id: userId,
+        event_id: eventId,
         total_amount: totalAmount,
         payment_provider: paymentProvider,
       });
@@ -199,6 +200,7 @@ export class TicketsService {
       // Create order
       const order = manager.create(Order, {
         user_id: userId,
+        event_id: eventId,
         total_amount: totalAmount,
         payment_provider: paymentProvider,
       });

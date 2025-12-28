@@ -10,6 +10,7 @@ import {
 } from 'typeorm';
 import { User } from './user.entity';
 import { Ticket } from './ticket.entity';
+import { Event } from './event.entity';
 
 export enum PaymentStatus {
   PENDING = 'PENDING',
@@ -32,6 +33,9 @@ export class Order {
 
   @Column()
   user_id: string;
+
+  @Column()
+  event_id: string;
 
   @Column('decimal', { precision: 10, scale: 2 })
   total_amount: number;
@@ -68,6 +72,10 @@ export class Order {
   @ManyToOne(() => User, (user) => user.orders)
   @JoinColumn({ name: 'user_id' })
   user: User;
+
+  @ManyToOne(() => Event)
+  @JoinColumn({ name: 'event_id' })
+  event: Event;
 
   @OneToMany(() => Ticket, (ticket) => ticket.order)
   tickets: Ticket[];
