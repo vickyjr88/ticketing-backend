@@ -51,6 +51,37 @@ export class EventsController {
     return this.eventsService.findByUser(req.user.id);
   }
 
+  // Admin-only endpoints (must come before :id route)
+  @UseGuards(JwtAuthGuard, AdminGuard)
+  @Get('admin/all')
+  @ApiBearerAuth()
+  @ApiOperation({ summary: 'Get all events (Admin only)' })
+  async findAllForAdmin() {
+    return this.eventsService.findAllForAdmin();
+  }
+
+  @UseGuards(JwtAuthGuard, AdminGuard)
+  @Put('admin/:id/status')
+  @ApiBearerAuth()
+  @ApiOperation({ summary: 'Update event status (Admin only)' })
+  async updateStatus(
+    @Param('id') id: string,
+    @Body('status') status: EventStatus,
+    @Req() req,
+  ) {
+    const isAdmin = req.user.role === 'ADMIN';
+    return this.eventsService.updateStatus(id, status, isAdmin);
+  }
+
+  @UseGuards(JwtAuthGuard, AdminGuard)
+  @Delete('admin/:id')
+  @ApiBearerAuth()
+  @ApiOperation({ summary: 'Delete any event (Admin only)' })
+  async deleteByAdmin(@Param('id') id: string) {
+    await this.eventsService.deleteByAdmin(id);
+    return { message: 'Event deleted successfully' };
+  }
+
   @Get(':id')
   @ApiOperation({ summary: 'Get event by ID' })
   async findOne(@Param('id') id: string) {
@@ -162,36 +193,5 @@ export class EventsController {
       imageUrl,
       message: 'Image uploaded successfully',
     };
-  }
-
-  // Admin-only endpoints
-  @UseGuards(JwtAuthGuard, AdminGuard)
-  @Get('admin/all')
-  @ApiBearerAuth()
-  @ApiOperation({ summary: 'Get all events (Admin only)' })
-  async findAllForAdmin() {
-    return this.eventsService.findAllForAdmin();
-  }
-
-  @UseGuards(JwtAuthGuard, AdminGuard)
-  @Put('admin/:id/status')
-  @ApiBearerAuth()
-  @ApiOperation({ summary: 'Update event status (Admin only)' })
-  async updateStatus(
-    @Param('id') id: string,
-    @Body('status') status: EventStatus,
-    @Req() req,
-  ) {
-    const isAdmin = req.user.role === 'ADMIN';
-    return this.eventsService.updateStatus(id, status, isAdmin);
-  }
-
-  @UseGuards(JwtAuthGuard, AdminGuard)
-  @Delete('admin/:id')
-  @ApiBearerAuth()
-  @ApiOperation({ summary: 'Delete any event (Admin only)' })
-  async deleteByAdmin(@Param('id') id: string) {
-    await this.eventsService.deleteByAdmin(id);
-    return { message: 'Event deleted successfully' };
   }
 }
