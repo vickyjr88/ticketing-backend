@@ -201,4 +201,52 @@ export class PaymentsService {
     }
     return { success: false };
   }
+
+  /**
+   * Handle Paystack webhook (idempotent)
+   */
+  async handlePaystackWebhook(webhookData: any): Promise<void> {
+    try {
+      // Paystack sends event data in the 'data' field
+      const event = webhookData.event;
+      const data = webhookData.data;
+
+      // Only process successful charge events
+      if (event === 'charge.success' && data.status === 'success') {
+        const orderId = data.metadata?.order_id;
+
+        if (!orderId) {
+          this.logger.warn('No order_id in Paystack webhook metadata');
+          return;
+        }
+
+        const order = await this.ordersRepository.findOne({
+          where: { id: orderId },
+        });
+
+        if (!order) {
+          this.logger.warn(`Order ${orderId} not found for Paystack webhook`);
+          return;
+        }
+
+        // Idempotency check
+        if (order.payment_status === PaymentStatus.PAID) {
+          this.logger.warn(`Order ${order.id} already marked as paid`);
+          return;
+        }
+
+        // Update order
+        order.payment_status = PaymentStatus.PAID;
+        order.provider_ref = data.reference;
+        order.paid_at = new Date();
+        order.payment_metadata = data;
+
+        await this.ordersRepository.save(order);
+        this.logger.log(`Order ${order.id} marked as paid via Paystack webhook`);
+      }
+    } catch (error) {
+      this.logger.error('Error processing Paystack webhook', error);
+      throw error;
+    }
+  }
 }

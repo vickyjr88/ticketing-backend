@@ -67,6 +67,14 @@ export class PaymentsController {
     return this.paymentsService.verifyPaystackTransaction(reference);
   }
 
+  @Post('paystack/webhook')
+  @HttpCode(HttpStatus.OK)
+  @ApiExcludeEndpoint() // Don't expose in Swagger
+  async paystackWebhook(@Body() webhookData: any) {
+    await this.paymentsService.handlePaystackWebhook(webhookData);
+    return { status: 'success' };
+  }
+
   @UseGuards(JwtAuthGuard)
   @Get('status/:orderId')
   @ApiBearerAuth()
