@@ -114,6 +114,7 @@ export class AdminService {
         const idQuery = this.orderRepository.createQueryBuilder('order')
             .select('order.id')
             .orderBy('order.created_at', 'DESC')
+            .addOrderBy('order.id', 'DESC') // Deterministic sort
             .skip(skip)
             .take(limit);
 
@@ -142,6 +143,7 @@ export class AdminService {
             .leftJoinAndSelect('tickets.tier', 'tier')   // Load tier from tickets
             .where('order.id IN (:...ids)', { ids })
             .orderBy('order.created_at', 'DESC')
+            .addOrderBy('order.id', 'DESC')
             .getMany();
 
         const mappedOrders = orders.map((order) => {
