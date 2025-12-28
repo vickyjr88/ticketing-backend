@@ -28,7 +28,7 @@ export class TicketsService {
     private ordersRepository: Repository<Order>,
     private eventsService: EventsService,
     private dataSource: DataSource,
-  ) {}
+  ) { }
 
   /**
    * Main purchase logic with time validations and atomic inventory management
@@ -40,6 +40,12 @@ export class TicketsService {
     paymentProvider: PaymentProvider,
   ): Promise<{ order: Order; tickets: Ticket[] }> {
     return await this.dataSource.transaction(async (manager) => {
+      // Validate event exists first
+      const event = await this.eventsService.findById(eventId);
+      if (!event) {
+        throw new NotFoundException(`Event ${eventId} not found`);
+      }
+
       let totalAmount = 0;
       const ticketsToCreate: Partial<Ticket>[] = [];
 
@@ -54,6 +60,13 @@ export class TicketsService {
 
         if (!tier) {
           throw new NotFoundException(`Ticket tier ${item.tierId} not found`);
+        }
+
+        // Validate tier belongs to event
+        if (tier.event_id !== eventId) {
+          throw new BadRequestException(
+            `Tier "${tier.name}" does not belong to event "${event.title}"`
+          );
         }
 
         // TIME VALIDATION: Check if sales are active
