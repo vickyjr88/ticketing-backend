@@ -31,6 +31,9 @@ RUN npm install --omit=dev
 # Copy built application from builder
 COPY --from=builder /app/dist ./dist
 
+# Copy migrations for production
+COPY src/migrations ./dist/migrations
+
 # Expose the application port
 EXPOSE 3000
 

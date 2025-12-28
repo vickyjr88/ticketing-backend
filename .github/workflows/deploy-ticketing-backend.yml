@@ -127,6 +127,14 @@ jobs:
           # Wait for container to start
           sleep 5
           
+          # Run database migrations
+          echo "Running database migrations..."
+          docker exec ticketing-backend npm run migration:run:prod || echo "Migration failed or no pending migrations"
+          
+          # Restart container to ensure all changes are applied
+          docker restart ticketing-backend
+          sleep 5
+          
           # Check container status
           docker ps --filter "name=ticketing-backend"
           
