@@ -2,6 +2,7 @@ import {
   Controller,
   Get,
   Post,
+  Delete,
   Param,
   UseGuards,
   Request,
@@ -13,7 +14,7 @@ import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 @ApiTags('lottery')
 @Controller('lottery')
 export class LotteryController {
-  constructor(private lotteryService: LotteryService) {}
+  constructor(private lotteryService: LotteryService) { }
 
   @UseGuards(JwtAuthGuard)
   @Post('enter/:eventId')
@@ -21,6 +22,14 @@ export class LotteryController {
   @ApiOperation({ summary: 'Enter lottery for an event' })
   async enter(@Param('eventId') eventId: string, @Request() req) {
     return this.lotteryService.enterLottery(req.user.userId, eventId);
+  }
+
+  @UseGuards(JwtAuthGuard)
+  @Delete('opt-out/:eventId')
+  @ApiBearerAuth()
+  @ApiOperation({ summary: 'Opt out of lottery for an event' })
+  async optOut(@Param('eventId') eventId: string, @Request() req) {
+    return this.lotteryService.optOutOfLottery(req.user.userId, eventId);
   }
 
   @UseGuards(JwtAuthGuard)

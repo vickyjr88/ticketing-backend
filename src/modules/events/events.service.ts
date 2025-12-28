@@ -178,4 +178,42 @@ export class EventsService {
     event.banner_image_url = imageUrl;
     return this.eventsRepository.save(event);
   }
+
+  // Admin-only methods
+  async findAllForAdmin(): Promise<Event[]> {
+    return this.eventsRepository
+      .createQueryBuilder('event')
+      .leftJoinAndSelect('event.ticket_tiers', 'tiers')
+      .leftJoinAndSelect('event.user', 'user')
+      .orderBy('event.created_at', 'DESC')
+      .getMany();
+  }
+
+  async updateStatus(
+    id: string,
+    status: EventStatus,
+    isAdmin: boolean,
+  ): Promise<Event> {
+    const event = await this.findById(id);
+
+    // Only admins can set ARCHIVED status
+    if (status === EventStatus.ARCHIVED && !isAdmin) {
+      throw new BadRequestException('Only admins can archive events');
+    }
+
+    // Only admins can change from ARCHIVED status
+    if (event.status === EventStatus.ARCHIVED && !isAdmin) {
+      throw new BadRequestException('Only admins can modify archived events');
+    }
+
+    event.status = status;
+    return this.eventsRepository.save(event);
+  }
+
+  async deleteByAdmin(id: string): Promise<void> {
+    const result = await this.eventsRepository.delete(id);
+    if (result.affected === 0) {
+      throw new NotFoundException('Event not found');
+    }
+  }
 }

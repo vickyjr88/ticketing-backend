@@ -18,6 +18,7 @@ export enum EventStatus {
   PUBLISHED = 'PUBLISHED',
   CANCELLED = 'CANCELLED',
   COMPLETED = 'COMPLETED',
+  ARCHIVED = 'ARCHIVED', // Admin-only status
 }
 
 @Entity('events')

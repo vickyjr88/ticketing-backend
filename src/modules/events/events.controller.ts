@@ -18,6 +18,7 @@ import { ApiTags, ApiOperation, ApiBearerAuth, ApiQuery, ApiConsumes } from '@ne
 import { EventsService } from './events.service';
 import { S3Service } from '../../services/s3.service';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
+import { AdminGuard } from '../auth/guards/admin.guard';
 import { CreateEventDto } from './dto/create-event.dto';
 import { UpdateEventDto } from './dto/update-event.dto';
 import { CreateTierDto } from './dto/create-tier.dto';

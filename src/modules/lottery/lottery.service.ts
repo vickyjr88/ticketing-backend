@@ -20,7 +20,7 @@ export class LotteryService {
     @InjectRepository(Event)
     private eventsRepository: Repository<Event>,
     private dataSource: DataSource,
-  ) {}
+  ) { }
 
   /**
    * Enter lottery for an event
@@ -55,6 +55,30 @@ export class LotteryService {
     });
 
     return this.lotteryRepository.save(entry);
+  }
+
+  /**
+   * Opt out of lottery for an event
+   */
+  async optOutOfLottery(userId: string, eventId: string): Promise<{ message: string }> {
+    // Find the entry
+    const entry = await this.lotteryRepository.findOne({
+      where: { event_id: eventId, user_id: userId },
+    });
+
+    if (!entry) {
+      throw new NotFoundException('You have not entered this lottery');
+    }
+
+    // Check if already won (can't opt out after winning)
+    if (entry.is_winner) {
+      throw new BadRequestException('Cannot opt out after winning the lottery');
+    }
+
+    // Delete the entry
+    await this.lotteryRepository.remove(entry);
+
+    return { message: 'Successfully opted out of the lottery' };
   }
 
   /**
