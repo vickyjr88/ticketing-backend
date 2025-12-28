@@ -109,27 +109,50 @@ export class AdminService {
 
     async getOrders(page: number = 1, limit: number = 15, status?: string) {
         const skip = (page - 1) * limit;
-        const queryBuilder = this.orderRepository.createQueryBuilder('order')
-            .leftJoinAndSelect('order.user', 'user')
-            .leftJoinAndSelect('order.tickets', 'tickets')
-            .leftJoinAndSelect('tickets.event', 'event')
-            .leftJoinAndSelect('tickets.tier', 'tier')
+
+        // 1. Get IDs for the current page to properly handle OneToMany pagination
+        const idQuery = this.orderRepository.createQueryBuilder('order')
+            .select('order.id')
             .orderBy('order.created_at', 'DESC')
             .skip(skip)
             .take(limit);
 
         if (status) {
-            queryBuilder.where('order.payment_status = :status', { status });
+            idQuery.where('order.payment_status = :status', { status });
         }
 
-        const [orders, total] = await queryBuilder.getManyAndCount();
+        const [idResults, total] = await idQuery.getManyAndCount();
+        const ids = idResults.map((o) => o.id);
 
-        const mappedOrders = orders.map(order => {
+        if (ids.length === 0) {
+            return {
+                orders: [],
+                total,
+                page,
+                totalPages: Math.ceil(total / limit),
+            };
+        }
+
+        // 2. Fetch full data for these IDs
+        const orders = await this.orderRepository
+            .createQueryBuilder('order')
+            .leftJoinAndSelect('order.user', 'user')
+            .leftJoinAndSelect('order.tickets', 'tickets')
+            .leftJoinAndSelect('tickets.event', 'event') // Load event from tickets
+            .leftJoinAndSelect('tickets.tier', 'tier')   // Load tier from tickets
+            .where('order.id IN (:...ids)', { ids })
+            .orderBy('order.created_at', 'DESC')
+            .getMany();
+
+        const mappedOrders = orders.map((order) => {
             // Safely get event and tier from first ticket if it exists
-            const firstTicket = order.tickets && order.tickets.length > 0 ? order.tickets[0] : null;
+            const firstTicket =
+                order.tickets && order.tickets.length > 0 ? order.tickets[0] : null;
+
+            // In case ticket exists but relation is null (shouldn't happen with correct DB)
             const event = firstTicket?.event || null;
             const tier = firstTicket?.tier || null;
-            
+
             return {
                 id: order.id,
                 user_id: order.user_id,
@@ -140,16 +163,18 @@ export class AdminService {
                 paid_at: order.paid_at,
                 created_at: order.created_at,
                 updated_at: order.updated_at,
-                user: order.user ? {
-                    id: order.user.id,
-                    email: order.user.email,
-                    first_name: order.user.first_name,
-                    last_name: order.user.last_name,
-                } : null,
+                user: order.user
+                    ? {
+                        id: order.user.id,
+                        email: order.user.email,
+                        first_name: order.user.first_name,
+                        last_name: order.user.last_name,
+                    }
+                    : null,
                 tickets_count: order.tickets?.length || 0,
                 status: order.payment_status,
                 event: event ? { id: event.id, title: event.title } : null,
-                tier: tier ? { id: tier.id, name: tier.name } : null
+                tier: tier ? { id: tier.id, name: tier.name } : null,
             };
         });
 
@@ -157,7 +182,7 @@ export class AdminService {
             orders: mappedOrders,
             total,
             page,
-            totalPages: Math.ceil(total / limit)
+            totalPages: Math.ceil(total / limit),
         };
     }
 
