@@ -1,0 +1,158 @@
+name: Deploy Ticketing Backend
+
+on:
+  push:
+    branches: [ main, master ]
+    paths:
+      - 'src/**'
+      - 'Dockerfile'
+      - 'package*.json'
+      - 'tsconfig*.json'
+      - 'nest-cli.json'
+      - '.github/workflows/deploy-ticketing-backend.yml'
+  pull_request:
+    branches: [ main, master ]
+
+env:
+  AWS_REGION: us-east-1
+  ECR_BACKEND_REPO: vdm-agency-ticketing-backend
+  EC2_HOST: 3.225.246.72
+  APP_PORT: 4001
+
+jobs:
+  build-and-deploy:
+    runs-on: ubuntu-latest
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Configure AWS credentials
+      uses: aws-actions/configure-aws-credentials@v4
+      with:
+        aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+        aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+        aws-region: ${{ env.AWS_REGION }}
+
+    - name: Login to Amazon ECR
+      id: login-ecr
+      uses: aws-actions/amazon-ecr-login@v2
+
+    - name: Build and push backend image
+      env:
+        ECR_REGISTRY: ${{ steps.login-ecr.outputs.registry }}
+        IMAGE_TAG: ${{ github.sha }}
+      run: |
+        docker build -t $ECR_REGISTRY/$ECR_BACKEND_REPO:$IMAGE_TAG .
+        docker build -t $ECR_REGISTRY/$ECR_BACKEND_REPO:latest .
+        docker push $ECR_REGISTRY/$ECR_BACKEND_REPO:$IMAGE_TAG
+        docker push $ECR_REGISTRY/$ECR_BACKEND_REPO:latest
+
+    - name: Deploy to EC2
+      uses: appleboy/ssh-action@v1.0.3
+      env:
+        ECR_REGISTRY: ${{ steps.login-ecr.outputs.registry }}
+        DB_HOST: ${{ secrets.DB_HOST }}
+        DB_PORT: ${{ secrets.DB_PORT }}
+        DB_USERNAME: ${{ secrets.DB_USERNAME }}
+        DB_PASSWORD: ${{ secrets.DB_PASSWORD }}
+        DB_DATABASE: ${{ secrets.DB_DATABASE }}
+        JWT_SECRET: ${{ secrets.JWT_SECRET }}
+        JWT_EXPIRATION: ${{ secrets.JWT_EXPIRATION }}
+        FRONTEND_URL: ${{ secrets.FRONTEND_URL }}
+        MPESA_CONSUMER_KEY: ${{ secrets.MPESA_CONSUMER_KEY }}
+        MPESA_CONSUMER_SECRET: ${{ secrets.MPESA_CONSUMER_SECRET }}
+        MPESA_PASSKEY: ${{ secrets.MPESA_PASSKEY }}
+        MPESA_SHORTCODE: ${{ secrets.MPESA_SHORTCODE }}
+        MPESA_CALLBACK_URL: ${{ secrets.MPESA_CALLBACK_URL }}
+        MPESA_ENVIRONMENT: ${{ secrets.MPESA_ENVIRONMENT }}
+        STRIPE_SECRET_KEY: ${{ secrets.STRIPE_SECRET_KEY }}
+        STRIPE_WEBHOOK_SECRET: ${{ secrets.STRIPE_WEBHOOK_SECRET }}
+        PAYSTACK_SECRET_KEY: ${{ secrets.PAYSTACK_SECRET_KEY }}
+        AWS_ACCESS_KEY_ID_S3: ${{ secrets.AWS_ACCESS_KEY_ID_S3 }}
+        AWS_SECRET_ACCESS_KEY_S3: ${{ secrets.AWS_SECRET_ACCESS_KEY_S3 }}
+        AWS_REGION_S3: ${{ secrets.AWS_REGION_S3 }}
+        AWS_S3_BUCKET: ${{ secrets.AWS_S3_BUCKET }}
+      with:
+        host: ${{ env.EC2_HOST }}
+        username: ubuntu
+        key: ${{ secrets.EC2_SSH_KEY }}
+        envs: ECR_REGISTRY,DB_HOST,DB_PORT,DB_USERNAME,DB_PASSWORD,DB_DATABASE,JWT_SECRET,JWT_EXPIRATION,FRONTEND_URL,MPESA_CONSUMER_KEY,MPESA_CONSUMER_SECRET,MPESA_PASSKEY,MPESA_SHORTCODE,MPESA_CALLBACK_URL,MPESA_ENVIRONMENT,STRIPE_SECRET_KEY,STRIPE_WEBHOOK_SECRET,PAYSTACK_SECRET_KEY,AWS_ACCESS_KEY_ID_S3,AWS_SECRET_ACCESS_KEY_S3,AWS_REGION_S3,AWS_S3_BUCKET,AWS_REGION,ECR_BACKEND_REPO
+        script: |
+          # Login to ECR
+          aws ecr get-login-password --region $AWS_REGION | docker login --username AWS --password-stdin $ECR_REGISTRY
+          
+          # Pull latest image
+          docker pull $ECR_REGISTRY/$ECR_BACKEND_REPO:latest
+          
+          # Stop and remove old container
+          docker stop ticketing-backend || true
+          docker rm ticketing-backend || true
+          
+          # Run backend with all environment variables
+          docker run -d \
+            --name ticketing-backend \
+            --restart unless-stopped \
+            -p ${{ env.APP_PORT }}:3000 \
+            -e NODE_ENV=production \
+            -e PORT=3000 \
+            -e DB_HOST=$DB_HOST \
+            -e DB_PORT=${DB_PORT:-5432} \
+            -e DB_USERNAME=$DB_USERNAME \
+            -e DB_PASSWORD=$DB_PASSWORD \
+            -e DB_DATABASE=$DB_DATABASE \
+            -e JWT_SECRET=$JWT_SECRET \
+            -e JWT_EXPIRATION=${JWT_EXPIRATION:-7d} \
+            -e FRONTEND_URL=$FRONTEND_URL \
+            -e MPESA_CONSUMER_KEY=$MPESA_CONSUMER_KEY \
+            -e MPESA_CONSUMER_SECRET=$MPESA_CONSUMER_SECRET \
+            -e MPESA_PASSKEY=$MPESA_PASSKEY \
+            -e MPESA_SHORTCODE=$MPESA_SHORTCODE \
+            -e MPESA_CALLBACK_URL=$MPESA_CALLBACK_URL \
+            -e MPESA_ENVIRONMENT=${MPESA_ENVIRONMENT:-sandbox} \
+            -e STRIPE_SECRET_KEY=$STRIPE_SECRET_KEY \
+            -e STRIPE_WEBHOOK_SECRET=$STRIPE_WEBHOOK_SECRET \
+            -e PAYSTACK_SECRET_KEY=$PAYSTACK_SECRET_KEY \
+            -e AWS_ACCESS_KEY_ID=$AWS_ACCESS_KEY_ID_S3 \
+            -e AWS_SECRET_ACCESS_KEY=$AWS_SECRET_ACCESS_KEY_S3 \
+            -e AWS_REGION=$AWS_REGION_S3 \
+            -e AWS_S3_BUCKET=$AWS_S3_BUCKET \
+            --network vdm-network \
+            $ECR_REGISTRY/$ECR_BACKEND_REPO:latest
+          
+          # Wait for container to start
+          sleep 5
+          
+          # Check container status
+          docker ps --filter "name=ticketing-backend"
+          
+          # Show logs (last 50 lines)
+          docker logs --tail 50 ticketing-backend
+          
+          # Clean up old images
+          docker image prune -af --filter "until=24h"
+
+    - name: Verify deployment
+      run: |
+        echo "🚀 Deployment complete!"
+        echo "Ticketing Backend API: http://${{ env.EC2_HOST }}:${{ env.APP_PORT }}/api"
+        echo "Swagger Documentation: http://${{ env.EC2_HOST }}:${{ env.APP_PORT }}/api/docs"
+        
+    - name: Health check
+      run: |
+        echo "⏳ Waiting 15 seconds for application to fully start..."
+        sleep 15
+        
+        echo "🏥 Checking API health..."
+        if curl -f -s http://${{ env.EC2_HOST }}:${{ env.APP_PORT }}/api/health > /dev/null 2>&1; then
+          echo "✅ Backend health check passed"
+        else
+          echo "⚠️ Backend health check failed - trying root endpoint"
+          curl -I http://${{ env.EC2_HOST }}:${{ env.APP_PORT }}/api || echo "❌ Backend is not responding"
+        fi
+
+    - name: Notify on failure
+      if: failure()
+      run: |
+        echo "❌ Deployment failed!"
+        echo "Please check the logs above for details."
