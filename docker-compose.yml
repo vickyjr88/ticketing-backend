@@ -1,0 +1,76 @@
+networks:
+  ticketing-network:
+    driver: bridge
+
+services:
+  postgres:
+    image: postgres:15-alpine
+    container_name: ticketing-db
+    restart: unless-stopped
+    env_file:
+      - .env
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-postgres}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-postgres}
+      POSTGRES_DB: ${POSTGRES_DB:-ticketing_db}
+    ports:
+      - "5437:5432"
+    volumes:
+      - ticketing_postgres_data:/var/lib/postgresql/data
+    networks:
+      - ticketing-network
+    healthcheck:
+      test: [ "CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-postgres}" ]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  backend:
+    build: .
+    container_name: ticketing-backend
+    restart: unless-stopped
+    env_file:
+      - .env
+    environment:
+      NODE_ENV: ${NODE_ENV:-development}
+      PORT: ${PORT:-3000}
+      DB_HOST: ${DB_HOST:-postgres}
+      DB_PORT: ${DB_PORT:-5432}
+      DB_USERNAME: ${DB_USERNAME:-postgres}
+      DB_PASSWORD: ${DB_PASSWORD:-postgres}
+      DB_DATABASE: ${DB_DATABASE:-ticketing_db}
+      JWT_SECRET: ${JWT_SECRET}
+      JWT_EXPIRATION: ${JWT_EXPIRATION:-7d}
+      MPESA_CONSUMER_KEY: ${MPESA_CONSUMER_KEY}
+      MPESA_CONSUMER_SECRET: ${MPESA_CONSUMER_SECRET}
+      MPESA_PASSKEY: ${MPESA_PASSKEY}
+      MPESA_SHORTCODE: ${MPESA_SHORTCODE}
+      MPESA_CALLBACK_URL: ${MPESA_CALLBACK_URL}
+      MPESA_ENVIRONMENT: ${MPESA_ENVIRONMENT:-sandbox}
+      STRIPE_SECRET_KEY: ${STRIPE_SECRET_KEY}
+      STRIPE_WEBHOOK_SECRET: ${STRIPE_WEBHOOK_SECRET}
+      PAYSTACK_SECRET_KEY: ${PAYSTACK_SECRET_KEY}
+    ports:
+      - "4001:3000"
+    networks:
+      - ticketing-network
+    depends_on:
+      postgres:
+        condition: service_healthy
+
+  web:
+    build:
+      context: ../web_ticketing
+      args:
+        VITE_API_URL: ${VITE_API_URL:-http://localhost:4001/api}
+    container_name: ticketing-web
+    restart: unless-stopped
+    ports:
+      - "4002:80"
+    networks:
+      - ticketing-network
+    depends_on:
+      - backend
+
+volumes:
+  ticketing_postgres_data:

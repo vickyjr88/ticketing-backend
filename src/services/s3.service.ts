@@ -1,0 +1,155 @@
+import { Injectable, Logger } from '@nestjs/common';
+import { S3Client, PutObjectCommand, DeleteObjectCommand } from '@aws-sdk/client-s3';
+import { v4 as uuidv4 } from 'uuid';
+
+@Injectable()
+export class S3Service {
+    private readonly logger = new Logger(S3Service.name);
+    private s3Client: S3Client;
+    private bucketName: string;
+    private region: string;
+    private cdnUrl: string;
+
+    constructor() {
+        this.region = process.env.AWS_S3_REGION || 'us-east-1';
+        this.bucketName = process.env.AWS_S3_BUCKET_NAME;
+        this.cdnUrl = process.env.CDN_URL || process.env.AWS_S3_BUCKET_URL;
+
+        if (!this.bucketName) {
+            this.logger.warn('AWS_S3_BUCKET_NAME not configured. S3 uploads will fail.');
+        }
+
+        this.s3Client = new S3Client({
+            region: this.region,
+            // EC2 IAM role will provide credentials automatically
+        });
+
+        this.logger.log(`S3 Service initialized. Bucket: ${this.bucketName}, Region: ${this.region}`);
+    }
+
+    /**
+     * Upload event banner image to S3
+     */
+    async uploadEventImage(
+        file: Express.Multer.File,
+        eventId: string,
+    ): Promise<string> {
+        if (!this.bucketName) {
+            throw new Error('S3 bucket not configured');
+        }
+
+        const fileExtension = file.originalname.split('.').pop();
+        const fileName = `${uuidv4()}.${fileExtension}`;
+        const key = `events/${eventId}/banner/${fileName}`;
+
+        try {
+            const command = new PutObjectCommand({
+                Bucket: this.bucketName,
+                Key: key,
+                Body: file.buffer,
+                ContentType: file.mimetype,
+                CacheControl: 'max-age=31536000', // Cache for 1 year
+                Metadata: {
+                    eventId,
+                    uploadedAt: new Date().toISOString(),
+                },
+            });
+
+            await this.s3Client.send(command);
+
+            const imageUrl = `${this.cdnUrl}/${key}`;
+            this.logger.log(`Image uploaded successfully: ${imageUrl}`);
+
+            return imageUrl;
+        } catch (error) {
+            this.logger.error(`Failed to upload image to S3: ${error.message}`, error.stack);
+            throw new Error(`Failed to upload image: ${error.message}`);
+        }
+    }
+
+    /**
+     * Upload ticket tier image to S3
+     */
+    async uploadTierImage(
+        file: Express.Multer.File,
+        eventId: string,
+        tierId: string,
+    ): Promise<string> {
+        if (!this.bucketName) {
+            throw new Error('S3 bucket not configured');
+        }
+
+        const fileExtension = file.originalname.split('.').pop();
+        const fileName = `${uuidv4()}.${fileExtension}`;
+        const key = `events/${eventId}/tiers/${tierId}/${fileName}`;
+
+        try {
+            const command = new PutObjectCommand({
+                Bucket: this.bucketName,
+                Key: key,
+                Body: file.buffer,
+                ContentType: file.mimetype,
+                CacheControl: 'max-age=31536000',
+                Metadata: {
+                    eventId,
+                    tierId,
+                    uploadedAt: new Date().toISOString(),
+                },
+            });
+
+            await this.s3Client.send(command);
+
+            const imageUrl = `${this.cdnUrl}/${key}`;
+            this.logger.log(`Tier image uploaded successfully: ${imageUrl}`);
+
+            return imageUrl;
+        } catch (error) {
+            this.logger.error(`Failed to upload tier image to S3: ${error.message}`, error.stack);
+            throw new Error(`Failed to upload tier image: ${error.message}`);
+        }
+    }
+
+    /**
+     * Delete image from S3
+     */
+    async deleteImage(imageUrl: string): Promise<void> {
+        if (!this.bucketName || !imageUrl) {
+            return;
+        }
+
+        try {
+            // Extract key from URL
+            const urlParts = imageUrl.split('/');
+            const keyIndex = urlParts.findIndex(part => part === 'events');
+            if (keyIndex === -1) {
+                this.logger.warn(`Invalid image URL format: ${imageUrl}`);
+                return;
+            }
+
+            const key = urlParts.slice(keyIndex).join('/');
+
+            const command = new DeleteObjectCommand({
+                Bucket: this.bucketName,
+                Key: key,
+            });
+
+            await this.s3Client.send(command);
+            this.logger.log(`Image deleted successfully: ${key}`);
+        } catch (error) {
+            this.logger.error(`Failed to delete image from S3: ${error.message}`, error.stack);
+            // Don't throw error - deletion failure shouldn't block other operations
+        }
+    }
+
+    /**
+     * Get S3 configuration info
+     */
+    getConfig() {
+        return {
+            bucketName: this.bucketName,
+            region: this.region,
+            cdnUrl: this.cdnUrl,
+            isConfigured: !!this.bucketName,
+        };
+    }
+}
