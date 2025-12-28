@@ -17,6 +17,9 @@ export const typeOrmConfig: DataSourceOptions = {
   migrations: [__dirname + '/../migrations/*{.ts,.js}'],
   synchronize: configService.get('NODE_ENV') === 'development', // Only for dev
   logging: configService.get('NODE_ENV') === 'development',
+  ssl: configService.get('NODE_ENV') === 'production' 
+    ? { rejectUnauthorized: false }
+    : false,
 };
 
 const dataSource = new DataSource(typeOrmConfig);
