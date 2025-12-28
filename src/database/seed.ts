@@ -21,37 +21,46 @@ export async function seedDatabase(dataSource: DataSource): Promise<void> {
     const eventRepository = dataSource.getRepository(Event);
     const tierRepository = dataSource.getRepository(TicketTier);
 
-    // Check if already seeded
+    // Check if already seeded (idempotent)
+    const existingUsers = await userRepository.count();
     const existingEvents = await eventRepository.count();
-    if (existingEvents > 0) {
+    
+    if (existingUsers > 0 && existingEvents > 0) {
         console.log('⚠️ Database already seeded. Skipping...');
         return;
     }
 
-    // Create admin user
-    const hashedPassword = await bcrypt.hash('Admin123!', 10);
-    const adminUser = userRepository.create({
-        email: 'admin@homerunwithpipita.com',
-        password: hashedPassword,
-        first_name: 'Admin',
-        last_name: 'User',
-        phone_number: '+254700000000',
-        role: UserRole.ADMIN,
-    });
-    await userRepository.save(adminUser);
-    console.log('✅ Created admin user');
+    // Create admin user (idempotent)
+    let adminUser = await userRepository.findOne({ where: { email: 'admin@homerunwithpipita.com' } });
+    if (!adminUser) {
+        const hashedPassword = await bcrypt.hash('Admin123!', 10);
+        adminUser = userRepository.create({
+            email: 'admin@homerunwithpipita.com',
+            password: hashedPassword,
+            first_name: 'Admin',
+            last_name: 'User',
+            phone_number: '+254700000000',
+            role: UserRole.ADMIN,
+        });
+        await userRepository.save(adminUser);
+        console.log('✅ Created admin user');
+    }
 
-    // Create scanner user
-    const scannerUser = userRepository.create({
-        email: 'scanner@homerunwithpipita.com',
-        password: hashedPassword,
-        first_name: 'Scanner',
-        last_name: 'Staff',
-        phone_number: '+254711111111',
-        role: UserRole.SCANNER,
-    });
-    await userRepository.save(scannerUser);
-    console.log('✅ Created scanner user');
+    // Create scanner user (idempotent)
+    let scannerUser = await userRepository.findOne({ where: { email: 'scanner@homerunwithpipita.com' } });
+    if (!scannerUser) {
+        const hashedPassword = await bcrypt.hash('Admin123!', 10);
+        scannerUser = userRepository.create({
+            email: 'scanner@homerunwithpipita.com',
+            password: hashedPassword,
+            first_name: 'Scanner',
+            last_name: 'Staff',
+            phone_number: '+254711111111',
+            role: UserRole.SCANNER,
+        });
+        await userRepository.save(scannerUser);
+        console.log('✅ Created scanner user');
+    }
 
     // ===========================================
     // EVENT 1: Home Run with Pipita - Main Event

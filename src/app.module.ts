@@ -28,13 +28,16 @@ import { AdminModule } from './modules/admin/admin.module';
             useFactory: (configService: ConfigService) => ({
                 type: 'postgres',
                 host: configService.get('DB_HOST'),
-                port: parseInt(configService.get('DB_PORT')),
+                port: parseInt(configService.get('DB_PORT')) || 5432,
                 username: configService.get('DB_USERNAME'),
                 password: configService.get('DB_PASSWORD'),
-                database: configService.get('DB_DATABASE'),
+                database: configService.get('DB_NAME') || configService.get('DB_DATABASE'),
                 entities: [__dirname + '/**/*.entity{.ts,.js}'],
-                synchronize: configService.get('NODE_ENV') === 'development',
+                synchronize: false, // Use migrations instead
                 logging: configService.get('NODE_ENV') === 'development',
+                ssl: configService.get('NODE_ENV') === 'production' 
+                    ? { rejectUnauthorized: false }
+                    : false,
             }),
             inject: [ConfigService],
         }),

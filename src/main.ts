@@ -2,9 +2,33 @@ import { NestFactory } from '@nestjs/core';
 import { ValidationPipe } from '@nestjs/common';
 import { SwaggerModule, DocumentBuilder } from '@nestjs/swagger';
 import { AppModule } from './app.module';
+import { DataSource } from 'typeorm';
+import { seedDatabase } from './database/seed';
 
 async function bootstrap() {
   const app = await NestFactory.create(AppModule);
+
+  // Run migrations and seeds on startup
+  try {
+    const dataSource = app.get(DataSource);
+    
+    // Run migrations (if any exist)
+    console.log('🔄 Running database migrations...');
+    const migrations = await dataSource.runMigrations();
+    if (migrations.length > 0) {
+      console.log(`✅ Ran ${migrations.length} migrations`);
+    } else {
+      console.log('✅ No migrations to run');
+    }
+
+    // Run seeds
+    console.log('🌱 Running database seeds...');
+    await seedDatabase(dataSource);
+    console.log('✅ Seeds completed');
+  } catch (error) {
+    console.error('❌ Database setup failed:', error);
+    // Don't exit - let the app start anyway
+  }
 
   // Enable CORS for multiple origins
   const allowedOrigins = [

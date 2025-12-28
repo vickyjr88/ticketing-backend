@@ -104,6 +104,7 @@ jobs:
             -e DB_USERNAME=$DB_USERNAME \
             -e DB_PASSWORD=$DB_PASSWORD \
             -e DB_DATABASE=$DB_DATABASE \
+            -e DB_NAME=$DB_DATABASE \
             -e JWT_SECRET=$JWT_SECRET \
             -e JWT_EXPIRATION=${JWT_EXPIRATION:-7d} \
             -e FRONTEND_URL=$FRONTEND_URL \
