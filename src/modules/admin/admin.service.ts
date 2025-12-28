@@ -125,10 +125,28 @@ export class AdminService {
         const [orders, total] = await queryBuilder.getManyAndCount();
 
         const mappedOrders = orders.map(order => {
-            const event = order.tickets?.[0]?.event;
-            const tier = order.tickets?.[0]?.tier;
+            // Safely get event and tier from first ticket if it exists
+            const firstTicket = order.tickets && order.tickets.length > 0 ? order.tickets[0] : null;
+            const event = firstTicket?.event || null;
+            const tier = firstTicket?.tier || null;
+            
             return {
-                ...order,
+                id: order.id,
+                user_id: order.user_id,
+                total_amount: order.total_amount,
+                payment_status: order.payment_status,
+                payment_provider: order.payment_provider,
+                provider_ref: order.provider_ref,
+                paid_at: order.paid_at,
+                created_at: order.created_at,
+                updated_at: order.updated_at,
+                user: order.user ? {
+                    id: order.user.id,
+                    email: order.user.email,
+                    first_name: order.user.first_name,
+                    last_name: order.user.last_name,
+                } : null,
+                tickets_count: order.tickets?.length || 0,
                 status: order.payment_status,
                 event: event ? { id: event.id, title: event.title } : null,
                 tier: tier ? { id: tier.id, name: tier.name } : null

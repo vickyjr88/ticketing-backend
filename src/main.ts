@@ -37,12 +37,15 @@ async function bootstrap() {
     'http://localhost:3000',  // Alternative port
     'http://127.0.0.1:4002',
     'http://127.0.0.1:5173',
+    'http://3.225.246.72:3000',  // Production frontend
     process.env.FRONTEND_URL,
   ].filter(Boolean);
 
   app.enableCors({
     origin: allowedOrigins,
     credentials: true,
+    methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'OPTIONS'],
+    allowedHeaders: ['Content-Type', 'Authorization'],
   });
 
   // Global validation pipe
