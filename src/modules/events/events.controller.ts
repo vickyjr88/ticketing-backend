@@ -48,7 +48,7 @@ export class EventsController {
   @ApiBearerAuth()
   @ApiOperation({ summary: 'Get current user events' })
   async findMyEvents(@Req() req) {
-    return this.eventsService.findByUser(req.user.id);
+    return this.eventsService.findByUser(req.user.userId);
   }
 
   // Admin-only endpoints (must come before :id route)

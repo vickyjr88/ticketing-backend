@@ -25,7 +25,7 @@ export class EventsService {
     const event = this.eventsRepository.create({
       ...createEventDto,
       user,
-      ...(user?.id && { user_id: user.id })
+      ...(user?.userId && { user_id: user.userId })
     });
     return this.eventsRepository.save(event);
   }
