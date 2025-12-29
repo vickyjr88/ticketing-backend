@@ -8,6 +8,7 @@ import { Repository } from 'typeorm';
 import { Order, PaymentStatus, PaymentProvider } from '../../entities/order.entity';
 import { Ticket } from '../../entities/ticket.entity';
 import { TicketsService } from '../tickets/tickets.service';
+import { PromoService } from '../promo/promo.service';
 import { CheckoutDto } from './dto/checkout.dto';
 import { AdoptTicketDto } from './dto/adopt-ticket.dto';
 
@@ -19,13 +20,14 @@ export class OrdersService {
     @InjectRepository(Ticket)
     private ticketsRepository: Repository<Ticket>,
     private ticketsService: TicketsService,
+    private promoService: PromoService,
   ) { }
 
   /**
-   * Standard/Group checkout
+   * Standard/Group checkout with promo code support
    */
   async checkout(userId: string, checkoutDto: CheckoutDto) {
-    const { eventId, items, paymentProvider } = checkoutDto;
+    const { eventId, items, paymentProvider, promoCode } = checkoutDto;
 
     // Create tickets and order
     const { order, tickets } = await this.ticketsService.purchaseTickets(
@@ -35,11 +37,55 @@ export class OrdersService {
       paymentProvider,
     );
 
+    // Handle promo code if provided
+    let discountAmount = 0;
+    let promoCodeId: string | null = null;
+    const subtotal = Number(order.total_amount);
+
+    if (promoCode) {
+      const promoResult = await this.promoService.validatePromoCode(
+        promoCode,
+        userId,
+        eventId,
+        subtotal,
+      );
+
+      if (!promoResult.valid) {
+        // Promo code invalid - we've already created the order, so just don't apply discount
+        // In a more strict implementation, you might want to validate before creating the order
+        console.warn(`Promo code validation failed: ${promoResult.error}`);
+      } else {
+        discountAmount = promoResult.discount_amount;
+        promoCodeId = promoResult.promo_code.id;
+
+        // Apply promo code usage tracking
+        await this.promoService.applyPromoCode(
+          promoCodeId,
+          userId,
+          order.id,
+          discountAmount,
+        );
+      }
+    }
+
+    // Update order with promo discount if applicable
+    if (discountAmount > 0) {
+      const finalAmount = subtotal - discountAmount;
+      order.subtotal = subtotal;
+      order.discount_amount = discountAmount;
+      order.promo_code_id = promoCodeId;
+      order.total_amount = finalAmount > 0 ? finalAmount : 0;
+      await this.ordersRepository.save(order);
+    }
+
     return {
       order,
       tickets,
       paymentRequired: true,
-      message: 'Order created. Proceed with payment.',
+      discount_applied: discountAmount,
+      message: promoCode && discountAmount > 0
+        ? `Order created with KES ${discountAmount} discount. Proceed with payment.`
+        : 'Order created. Proceed with payment.',
     };
   }
 
@@ -124,3 +170,4 @@ export class OrdersService {
     });
   }
 }
+

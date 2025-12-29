@@ -14,6 +14,7 @@ import { PaymentsModule } from './modules/payments/payments.module';
 import { LotteryModule } from './modules/lottery/lottery.module';
 import { AdminModule } from './modules/admin/admin.module';
 import { WaitlistModule } from './modules/waitlist/waitlist.module';
+import { PromoModule } from './modules/promo/promo.module';
 
 @Module({
     imports: [
@@ -56,6 +57,7 @@ import { WaitlistModule } from './modules/waitlist/waitlist.module';
         LotteryModule,
         AdminModule,
         WaitlistModule,
+        PromoModule,
     ],
 })
 export class AppModule { }

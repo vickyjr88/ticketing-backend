@@ -64,6 +64,15 @@ export class Order {
   @Column({ type: 'timestamp', nullable: true })
   paid_at: Date;
 
+  @Column({ nullable: true })
+  promo_code_id: string; // Applied promo code
+
+  @Column('decimal', { precision: 10, scale: 2, nullable: true })
+  discount_amount: number; // Amount discounted
+
+  @Column('decimal', { precision: 10, scale: 2, nullable: true })
+  subtotal: number; // Original amount before discount
+
   @CreateDateColumn()
   created_at: Date;
 
@@ -86,9 +95,9 @@ export class Order {
   @BeforeUpdate()
   setDefaultPaymentStatus() {
     // Prevent string "undefined" or invalid values from being stored
-    if (!this.payment_status || 
-        this.payment_status === 'undefined' as any || 
-        !Object.values(PaymentStatus).includes(this.payment_status)) {
+    if (!this.payment_status ||
+      this.payment_status === 'undefined' as any ||
+      !Object.values(PaymentStatus).includes(this.payment_status)) {
       this.payment_status = PaymentStatus.PENDING;
     }
   }

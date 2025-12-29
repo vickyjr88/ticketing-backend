@@ -1,5 +1,5 @@
-import { ApiProperty } from '@nestjs/swagger';
-import { IsString, IsArray, IsEnum, ValidateNested, IsNumber, Min } from 'class-validator';
+import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
+import { IsString, IsArray, IsEnum, ValidateNested, IsNumber, Min, IsOptional } from 'class-validator';
 import { Type } from 'class-transformer';
 import { PaymentProvider } from '../../../entities/order.entity';
 
@@ -28,4 +28,9 @@ export class CheckoutDto {
   @ApiProperty({ enum: PaymentProvider })
   @IsEnum(PaymentProvider)
   paymentProvider: PaymentProvider;
+
+  @ApiPropertyOptional({ description: 'Promo code to apply' })
+  @IsOptional()
+  @IsString()
+  promoCode?: string;
 }
