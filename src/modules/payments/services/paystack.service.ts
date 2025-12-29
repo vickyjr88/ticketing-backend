@@ -37,6 +37,10 @@ export class PaystackService {
         callbackUrl?: string,
     ): Promise<any> {
         try {
+            // Get currency from config or default to NGN (Nigerian Naira)
+            // Paystack supports: NGN, GHS, ZAR, USD
+            const currency = this.configService.get('PAYSTACK_CURRENCY') || 'NGN';
+            
             // Paystack expects amount in kobo/cents (multiply by 100)
             const payload = {
                 email,
@@ -46,10 +50,10 @@ export class PaystackService {
                 metadata: {
                     order_id: orderId,
                 },
-                currency: 'NGN', // Paystack primarily supports Nigerian Naira
+                currency,
             };
 
-            this.logger.log(`Initializing Paystack transaction: ${JSON.stringify(payload)}`);
+            this.logger.log(`Initializing Paystack transaction: email=${email}, amount=${amount}, currency=${currency}, reference=${payload.reference}`);
 
             const response = await axios.post(
                 `${this.baseUrl}/transaction/initialize`,
@@ -59,10 +63,10 @@ export class PaystackService {
                 },
             );
 
-            this.logger.log(`Paystack response: ${JSON.stringify(response.data)}`);
+            this.logger.log(`Paystack initialized successfully: ${response.data.data?.authorization_url}`);
             return response.data;
         } catch (error) {
-            this.logger.error('Paystack initialization failed', error.response?.data || error.message);
+            this.logger.error(`Paystack initialization failed: ${error.response?.data?.message || error.message}`, error.response?.data);
             throw new BadRequestException(
                 error.response?.data?.message || 'Failed to initialize Paystack payment',
             );
