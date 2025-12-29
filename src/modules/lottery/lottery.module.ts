@@ -6,10 +6,12 @@ import { Event } from '../../entities/event.entity';
 import { LotteryService } from './lottery.service';
 import { LotteryController } from './lottery.controller';
 
+import { User } from '../../entities/user.entity';
+
 @Module({
-  imports: [TypeOrmModule.forFeature([LotteryEntry, Ticket, Event])],
+  imports: [TypeOrmModule.forFeature([LotteryEntry, Ticket, Event, User])],
   providers: [LotteryService],
   controllers: [LotteryController],
   exports: [LotteryService],
 })
-export class LotteryModule {}
+export class LotteryModule { }

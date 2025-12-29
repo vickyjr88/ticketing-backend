@@ -6,7 +6,11 @@ import {
   Param,
   UseGuards,
   Request,
+  Body,
 } from '@nestjs/common';
+import { RolesGuard } from '../auth/guards/roles.guard';
+import { Roles } from '../auth/decorators/roles.decorator';
+import { UserRole } from '../../entities/user.entity';
 import { ApiTags, ApiOperation, ApiBearerAuth } from '@nestjs/swagger';
 import { LotteryService } from './lottery.service';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
@@ -38,6 +42,15 @@ export class LotteryController {
   @ApiOperation({ summary: 'Run lottery draw (Admin only)' })
   async draw(@Param('eventId') eventId: string) {
     return this.lotteryService.runLotteryDraw(eventId);
+  }
+
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles(UserRole.ADMIN)
+  @Post('allocate/:eventId')
+  @ApiBearerAuth()
+  @ApiOperation({ summary: 'Manually allocate a ticket to a user (Admin only)' })
+  async allocate(@Param('eventId') eventId: string, @Body('email') email: string) {
+    return this.lotteryService.allocateTicketManually(eventId, email);
   }
 
   @Get('event/:eventId/entries')

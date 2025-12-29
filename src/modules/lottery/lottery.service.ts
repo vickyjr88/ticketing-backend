@@ -9,6 +9,7 @@ import { Repository, DataSource } from 'typeorm';
 import { LotteryEntry } from '../../entities/lottery-entry.entity';
 import { Ticket, TicketStatus } from '../../entities/ticket.entity';
 import { Event } from '../../entities/event.entity';
+import { User } from '../../entities/user.entity';
 
 @Injectable()
 export class LotteryService {
@@ -19,6 +20,8 @@ export class LotteryService {
     private ticketsRepository: Repository<Ticket>,
     @InjectRepository(Event)
     private eventsRepository: Repository<Event>,
+    @InjectRepository(User)
+    private userRepository: Repository<User>,
     private dataSource: DataSource,
   ) { }
 
@@ -229,5 +232,60 @@ export class LotteryService {
       totalWinners,
       availableTickets,
     };
+  }
+
+  /**
+   * Manually allocate a ticket to a specific user (e.g. Social Media Winner)
+   */
+  async allocateTicketManually(eventId: string, email: string): Promise<LotteryEntry> {
+    const user = await this.userRepository.findOne({ where: { email } });
+    if (!user) {
+      throw new NotFoundException(`User with email ${email} not found`);
+    }
+
+    const event = await this.eventsRepository.findOne({ where: { id: eventId } });
+    if (!event) {
+      throw new NotFoundException('Event not found');
+    }
+
+    // Check if user already won
+    const existingEntry = await this.lotteryRepository.findOne({
+      where: { event_id: eventId, user_id: user.id },
+    });
+
+    if (existingEntry && existingEntry.is_winner) {
+      throw new ConflictException('User has already won a ticket for this event');
+    }
+
+    return await this.dataSource.transaction(async (manager) => {
+      // Find a POOL ticket
+      const ticket = await manager.findOne(Ticket, {
+        where: { event_id: eventId, status: TicketStatus.POOL },
+        lock: { mode: 'pessimistic_write' },
+      });
+
+      if (!ticket) {
+        throw new BadRequestException('No pool tickets available for allocation');
+      }
+
+      // Assign ticket
+      ticket.holder_id = user.id;
+      ticket.status = TicketStatus.WON;
+      await manager.save(Ticket, ticket);
+
+      // Create or Update Lottery Entry
+      let entry = existingEntry;
+      if (!entry) {
+        entry = manager.create(LotteryEntry, {
+          event_id: eventId,
+          user_id: user.id,
+        });
+      }
+
+      entry.is_winner = true;
+      entry.won_at = new Date();
+
+      return await manager.save(LotteryEntry, entry);
+    });
   }
 }
