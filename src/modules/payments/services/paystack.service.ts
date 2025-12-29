@@ -7,11 +7,22 @@ export class PaystackService {
     private readonly logger = new Logger(PaystackService.name);
     private readonly baseUrl = 'https://api.paystack.co';
 
-    constructor(private configService: ConfigService) { }
+    constructor(private configService: ConfigService) {
+        const apiKey = this.configService.get('PAYSTACK_SECRET_KEY');
+        if (!apiKey) {
+            this.logger.error('PAYSTACK_SECRET_KEY is not configured');
+        } else {
+            this.logger.log('Paystack service initialized with key: ' + apiKey.substring(0, 10) + '...');
+        }
+    }
 
     private getHeaders() {
+        const apiKey = this.configService.get('PAYSTACK_SECRET_KEY');
+        if (!apiKey) {
+            throw new BadRequestException('Paystack API key is not configured');
+        }
         return {
-            Authorization: `Bearer ${this.configService.get('PAYSTACK_SECRET_KEY')}`,
+            Authorization: `Bearer ${apiKey}`,
             'Content-Type': 'application/json',
         };
     }
@@ -35,8 +46,10 @@ export class PaystackService {
                 metadata: {
                     order_id: orderId,
                 },
-                currency: 'KES', // Or Configurable
+                currency: 'NGN', // Paystack primarily supports Nigerian Naira
             };
+
+            this.logger.log(`Initializing Paystack transaction: ${JSON.stringify(payload)}`);
 
             const response = await axios.post(
                 `${this.baseUrl}/transaction/initialize`,
@@ -46,9 +59,10 @@ export class PaystackService {
                 },
             );
 
+            this.logger.log(`Paystack response: ${JSON.stringify(response.data)}`);
             return response.data;
         } catch (error) {
-            this.logger.error('Paystack initialization failed', error.response?.data || error);
+            this.logger.error('Paystack initialization failed', error.response?.data || error.message);
             throw new BadRequestException(
                 error.response?.data?.message || 'Failed to initialize Paystack payment',
             );
