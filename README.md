@@ -10,7 +10,10 @@ Event ticketing and management system backend built with NestJS, TypeORM, and Po
 - 💳 **Payment Integration** - Stripe, Paystack, and M-Pesa support
 - 📱 **QR Code Generation** - Secure ticket QR codes for scanning
 - 🔐 **Authentication** - JWT-based authentication with role-based access
-- 📊 **Order Management** - Track orders and ticket sales
+- 📊 **Analytics Dashboard** - Advanced insights into sales, check-ins, and customer retention
+- 📧 **Email Notifications** - Beautiful branded emails via Brevo for all activities
+- 🏷️ **Promo Codes** - Discount codes with usage limits and expiry dates
+- 📋 **Waitlist** - Notify users when sold-out tickets become available
 - 🖼️ **S3 Image Upload** - Event banner images stored in AWS S3
 
 ## Tech Stack
@@ -74,6 +77,9 @@ MPESA_ENVIRONMENT=sandbox
 AWS_S3_BUCKET_NAME=your-bucket-name
 AWS_S3_REGION=us-east-1
 CDN_URL=https://your-cdn-url.com
+
+# Email (Brevo)
+BREVO_API_KEY=xkeysib-your-api-key
 ```
 
 ## Database Setup

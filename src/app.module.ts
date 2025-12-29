@@ -16,6 +16,7 @@ import { AdminModule } from './modules/admin/admin.module';
 import { WaitlistModule } from './modules/waitlist/waitlist.module';
 import { PromoModule } from './modules/promo/promo.module';
 import { AnalyticsModule } from './modules/analytics/analytics.module';
+import { EmailModule } from './modules/email/email.module';
 
 @Module({
     imports: [
@@ -60,6 +61,7 @@ import { AnalyticsModule } from './modules/analytics/analytics.module';
         WaitlistModule,
         PromoModule,
         AnalyticsModule,
+        EmailModule,
     ],
 })
 export class AppModule { }

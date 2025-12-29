@@ -10,6 +10,7 @@ import { LotteryEntry } from '../../entities/lottery-entry.entity';
 import { Ticket, TicketStatus } from '../../entities/ticket.entity';
 import { Event } from '../../entities/event.entity';
 import { User } from '../../entities/user.entity';
+import { EmailService } from '../email/email.service';
 
 @Injectable()
 export class LotteryService {
@@ -23,6 +24,7 @@ export class LotteryService {
     @InjectRepository(User)
     private userRepository: Repository<User>,
     private dataSource: DataSource,
+    private emailService: EmailService,
   ) { }
 
   /**
@@ -57,7 +59,30 @@ export class LotteryService {
       user_id: userId,
     });
 
-    return this.lotteryRepository.save(entry);
+    const savedEntry = await this.lotteryRepository.save(entry);
+
+    // Send lottery entry confirmation email
+    const user = await this.userRepository.findOne({ where: { id: userId } });
+    if (user) {
+      const eventDate = event.start_date
+        ? new Date(event.start_date).toLocaleDateString('en-KE', {
+          weekday: 'long',
+          year: 'numeric',
+          month: 'long',
+          day: 'numeric',
+        })
+        : 'TBA';
+
+      this.emailService.sendLotteryEntryConfirmation({
+        customerName: user.first_name || user.email,
+        customerEmail: user.email,
+        eventTitle: event.title,
+        eventDate,
+        isWinner: false,
+      }).catch(err => console.error('Failed to send lottery entry email:', err));
+    }
+
+    return savedEntry;
   }
 
   /**
@@ -146,12 +171,57 @@ export class LotteryService {
         lottery_draw_date: new Date(),
       });
 
+      // Send email notifications to all participants (async, don't block)
+      this.sendLotteryResultEmails(eventId, shuffledEntries, assignmentsCount)
+        .catch(err => console.error('Failed to send lottery result emails:', err));
+
       return {
         totalTickets: poolTickets.length,
         totalEntrants: entries.length,
         winners: winnersCount,
       };
     });
+  }
+
+  /**
+   * Send lottery result emails to all participants
+   */
+  private async sendLotteryResultEmails(
+    eventId: string,
+    entries: LotteryEntry[],
+    winnersCount: number,
+  ): Promise<void> {
+    const event = await this.eventsRepository.findOne({ where: { id: eventId } });
+    if (!event) return;
+
+    const eventDate = event.start_date
+      ? new Date(event.start_date).toLocaleDateString('en-KE', {
+        weekday: 'long',
+        year: 'numeric',
+        month: 'long',
+        day: 'numeric',
+      })
+      : 'TBA';
+
+    // Send to all entries
+    for (let i = 0; i < entries.length; i++) {
+      const entry = entries[i];
+      const isWinner = i < winnersCount;
+
+      const user = await this.userRepository.findOne({ where: { id: entry.user_id } });
+      if (!user) continue;
+
+      await this.emailService.sendLotteryResult({
+        customerName: user.first_name || user.email,
+        customerEmail: user.email,
+        eventTitle: event.title,
+        eventDate,
+        isWinner,
+      }).catch(err => console.error(`Failed to send lottery result to ${user.email}:`, err));
+
+      // Small delay to avoid rate limiting
+      await new Promise(resolve => setTimeout(resolve, 100));
+    }
   }
 
   /**

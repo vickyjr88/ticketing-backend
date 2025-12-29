@@ -3,13 +3,15 @@ import { JwtService } from '@nestjs/jwt';
 import * as bcrypt from 'bcryptjs';
 import { UsersService } from '../users/users.service';
 import { User } from '../../entities/user.entity';
+import { EmailService } from '../email/email.service';
 
 @Injectable()
 export class AuthService {
   constructor(
     private usersService: UsersService,
     private jwtService: JwtService,
-  ) {}
+    private emailService: EmailService,
+  ) { }
 
   async validateUser(email: string, password: string): Promise<any> {
     const user = await this.usersService.findByEmail(email);
@@ -49,6 +51,12 @@ export class AuthService {
       ...userData,
       password: hashedPassword,
     });
+
+    // Send welcome email (async, don't block registration)
+    this.emailService.sendWelcomeEmail(
+      user.email,
+      user.first_name || user.email.split('@')[0],
+    ).catch(err => console.error('Failed to send welcome email:', err));
 
     // Return token
     return this.login(user);

@@ -5,6 +5,7 @@ import { Order, PaymentProvider, PaymentStatus } from '../../entities/order.enti
 import { MpesaService } from './services/mpesa.service';
 import { StripeService } from './services/stripe.service';
 import { PaystackService } from './services/paystack.service';
+import { EmailService } from '../email/email.service';
 
 
 
@@ -19,6 +20,7 @@ export class PaymentsService {
     private mpesaService: MpesaService,
     private stripeService: StripeService,
     private paystackService: PaystackService,
+    private emailService: EmailService,
   ) { }
 
   /**
@@ -113,6 +115,9 @@ export class PaymentsService {
 
       await this.ordersRepository.save(order);
       this.logger.log(`Order ${order.id} marked as paid via M-Pesa`);
+
+      // Send order confirmation email
+      await this.sendOrderConfirmationEmail(order.id);
     }
   }
 
@@ -154,6 +159,11 @@ export class PaymentsService {
     this.logger.log(
       `Order ${order.id} payment status updated to ${order.payment_status}`,
     );
+
+    // Send order confirmation email on success
+    if (result.success) {
+      await this.sendOrderConfirmationEmail(order.id);
+    }
   }
 
   /**
@@ -195,6 +205,9 @@ export class PaymentsService {
           order.payment_metadata = result.data;
           await this.ordersRepository.save(order);
           this.logger.log(`Order ${order.id} marked as paid via Paystack`);
+
+          // Send order confirmation email
+          await this.sendOrderConfirmationEmail(order.id);
         }
       }
       return { success: true, orderId };
@@ -243,10 +256,58 @@ export class PaymentsService {
 
         await this.ordersRepository.save(order);
         this.logger.log(`Order ${order.id} marked as paid via Paystack webhook`);
+
+        // Send order confirmation email
+        await this.sendOrderConfirmationEmail(order.id);
       }
     } catch (error) {
       this.logger.error('Error processing Paystack webhook', error);
       throw error;
+    }
+  }
+
+  /**
+   * Send order confirmation email
+   */
+  private async sendOrderConfirmationEmail(orderId: string): Promise<void> {
+    try {
+      const order = await this.ordersRepository.findOne({
+        where: { id: orderId },
+        relations: ['user', 'tickets', 'event'],
+      });
+
+      if (!order || !order.user) {
+        this.logger.warn(`Cannot send email: Order or user not found for ${orderId}`);
+        return;
+      }
+
+      const eventDate = order.event?.start_date
+        ? new Date(order.event.start_date).toLocaleDateString('en-KE', {
+          weekday: 'long',
+          year: 'numeric',
+          month: 'long',
+          day: 'numeric',
+          hour: '2-digit',
+          minute: '2-digit',
+        })
+        : 'TBA';
+
+      await this.emailService.sendOrderConfirmation({
+        customerName: order.user.first_name || order.user.email,
+        customerEmail: order.user.email,
+        orderId: order.id,
+        eventTitle: order.event?.title || 'Event',
+        eventDate,
+        eventLocation: order.event?.venue || 'TBA',
+        ticketCount: order.tickets?.length || 1,
+        totalAmount: Number(order.total_amount),
+        currency: 'KES',
+      });
+
+      this.logger.log(`Order confirmation email sent for order ${orderId}`);
+    } catch (error) {
+      this.logger.error(`Failed to send order confirmation email for ${orderId}:`, error);
+      // Don't throw - email failure shouldn't break payment flow
     }
   }
 }

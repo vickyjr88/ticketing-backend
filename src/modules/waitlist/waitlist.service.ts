@@ -3,7 +3,9 @@ import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { Waitlist } from '../../entities/waitlist.entity';
 import { TicketTier } from '../../entities/ticket-tier.entity';
+import { Event } from '../../entities/event.entity';
 import { JoinWaitlistDto } from './dto/join-waitlist.dto';
+import { EmailService } from '../email/email.service';
 
 @Injectable()
 export class WaitlistService {
@@ -12,6 +14,9 @@ export class WaitlistService {
         private waitlistRepository: Repository<Waitlist>,
         @InjectRepository(TicketTier)
         private tierRepository: Repository<TicketTier>,
+        @InjectRepository(Event)
+        private eventRepository: Repository<Event>,
+        private emailService: EmailService,
     ) { }
 
     async join(dto: JoinWaitlistDto, userId?: string): Promise<Waitlist> {
@@ -38,7 +43,18 @@ export class WaitlistService {
             user_id: userId,
         });
 
-        return this.waitlistRepository.save(waitlistEntry);
+        const savedEntry = await this.waitlistRepository.save(waitlistEntry);
+
+        // Send waitlist confirmation email
+        const event = await this.eventRepository.findOne({ where: { id: dto.eventId } });
+        this.emailService.sendWaitlistJoined({
+            customerName: dto.email.split('@')[0],
+            customerEmail: dto.email,
+            eventTitle: event?.title || 'Event',
+            tierName: tier.name,
+        }).catch(err => console.error('Failed to send waitlist confirmation email:', err));
+
+        return savedEntry;
     }
 
     async getStatsByEvent(eventId: string) {
@@ -51,5 +67,44 @@ export class WaitlistService {
             .getRawMany();
 
         return stats;
+    }
+
+    /**
+     * Notify waitlist users when tickets become available
+     */
+    async notifyWaitlist(eventId: string, tierId: string): Promise<number> {
+        const entries = await this.waitlistRepository.find({
+            where: { event_id: eventId, tier_id: tierId, notified: false },
+        });
+
+        if (entries.length === 0) return 0;
+
+        const event = await this.eventRepository.findOne({ where: { id: eventId } });
+        const tier = await this.tierRepository.findOne({ where: { id: tierId } });
+
+        if (!event || !tier) return 0;
+
+        let notifiedCount = 0;
+
+        for (const entry of entries) {
+            const sent = await this.emailService.sendWaitlistNotification({
+                customerName: entry.email.split('@')[0],
+                customerEmail: entry.email,
+                eventTitle: event.title,
+                tierName: tier.name,
+                purchaseUrl: `https://pipita.co.ke/events/${eventId}`,
+            });
+
+            if (sent) {
+                entry.notified = true;
+                await this.waitlistRepository.save(entry);
+                notifiedCount++;
+            }
+
+            // Small delay to avoid rate limiting
+            await new Promise(resolve => setTimeout(resolve, 100));
+        }
+
+        return notifiedCount;
     }
 }
