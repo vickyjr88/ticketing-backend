@@ -278,12 +278,33 @@ export class TicketsService {
       throw new BadRequestException('Ticket is cancelled');
     }
 
+    // Fetch scanner to get assigned gate
+    const scanner = await this.userRepository.findOne({ where: { id: scannerId } });
+
     // Update ticket status
     ticket.status = TicketStatus.REDEEMED;
     ticket.checked_in_at = new Date();
     ticket.checked_in_by = scannerId;
+    ticket.checked_in_gate = scanner?.assigned_gate || 'Unassigned';
 
     return this.ticketsRepository.save(ticket);
+  }
+
+  /**
+   * Get ingress stats by gate
+   */
+  async getGateStats(eventId: string) {
+    const stats = await this.ticketsRepository
+      .createQueryBuilder('ticket')
+      .select('ticket.checked_in_gate', 'gate')
+      .addSelect('COUNT(ticket.id)', 'count')
+      .where('ticket.event_id = :eventId', { eventId })
+      .andWhere('ticket.status = :status', { status: TicketStatus.REDEEMED })
+      .andWhere('ticket.checked_in_gate IS NOT NULL')
+      .groupBy('ticket.checked_in_gate')
+      .getRawMany();
+
+    return stats;
   }
 
   /**

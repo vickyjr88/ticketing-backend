@@ -70,4 +70,7 @@ export class User {
 
   @OneToMany(() => Event, (event) => event.user)
   created_events: Event[];
+
+  @Column({ nullable: true })
+  assigned_gate: string; // For scanners
 }

@@ -70,6 +70,9 @@ export class Ticket {
   @Column({ nullable: true })
   checked_in_by: string; // Scanner user ID
 
+  @Column({ nullable: true })
+  checked_in_gate: string; // Gate name at check-in
+
   @CreateDateColumn()
   created_at: Date;
 

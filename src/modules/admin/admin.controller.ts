@@ -73,4 +73,13 @@ export class AdminController {
     ) {
         return this.adminService.updateUserStatus(id, isActive);
     }
+
+    @Patch('users/:id/gate')
+    @ApiOperation({ summary: 'Assign gate to scanner' })
+    async updateUserGate(
+        @Param('id') id: string,
+        @Body('gate') gate: string,
+    ) {
+        return this.adminService.updateUserGate(id, gate);
+    }
 }

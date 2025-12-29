@@ -214,4 +214,8 @@ export class AdminService {
     async updateUserStatus(userId: string, isActive: boolean) {
         return this.userRepository.update(userId, { is_active: isActive });
     }
+
+    async updateUserGate(userId: string, gate: string) {
+        return this.userRepository.update(userId, { assigned_gate: gate });
+    }
 }

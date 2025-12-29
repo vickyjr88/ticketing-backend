@@ -63,4 +63,12 @@ export class TicketsController {
   ) {
     return this.ticketsService.transferTicket(id, req.user.userId, email);
   }
+
+  @UseGuards(JwtAuthGuard)
+  @Get('scanner/stats/:eventId')
+  @ApiBearerAuth()
+  @ApiOperation({ summary: 'Get gate ingress stats (Admin/Scanner)' })
+  async getGateStats(@Param('eventId') eventId: string) {
+    return this.ticketsService.getGateStats(eventId);
+  }
 }
