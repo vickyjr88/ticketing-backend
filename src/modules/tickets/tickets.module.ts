@@ -7,13 +7,15 @@ import { TicketsService } from './tickets.service';
 import { TicketsController } from './tickets.controller';
 import { EventsModule } from '../events/events.module';
 
+import { User } from '../../entities/user.entity';
+
 @Module({
   imports: [
-    TypeOrmModule.forFeature([Ticket, TicketTier, Order]),
+    TypeOrmModule.forFeature([Ticket, TicketTier, Order, User]),
     EventsModule,
   ],
   providers: [TicketsService],
   controllers: [TicketsController],
   exports: [TicketsService],
 })
-export class TicketsModule {}
+export class TicketsModule { }

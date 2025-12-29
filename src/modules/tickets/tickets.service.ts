@@ -8,6 +8,7 @@ import { Repository, DataSource } from 'typeorm';
 import { Ticket, TicketType, TicketStatus } from '../../entities/ticket.entity';
 import { TicketTier } from '../../entities/ticket-tier.entity';
 import { Order, PaymentProvider, PaymentStatus } from '../../entities/order.entity';
+import { User } from '../../entities/user.entity';
 import { EventsService } from '../events/events.service';
 import * as QRCode from 'qrcode';
 import { v4 as uuidv4 } from 'uuid';
@@ -26,6 +27,8 @@ export class TicketsService {
     private tierRepository: Repository<TicketTier>,
     @InjectRepository(Order)
     private ordersRepository: Repository<Order>,
+    @InjectRepository(User)
+    private userRepository: Repository<User>,
     private eventsService: EventsService,
     private dataSource: DataSource,
   ) { }
@@ -308,5 +311,56 @@ export class TicketsService {
     }
 
     return ticket;
+  }
+
+  /**
+   * Transfer ticket to another user
+   */
+  async transferTicket(
+    ticketId: string,
+    senderId: string,
+    recipientEmail: string,
+  ): Promise<Ticket> {
+    const ticket = await this.ticketsRepository.findOne({
+      where: { id: ticketId },
+      relations: ['holder'],
+    });
+
+    if (!ticket) {
+      throw new NotFoundException('Ticket not found');
+    }
+
+    // Verify ownership
+    if (ticket.holder_id !== senderId) {
+      throw new BadRequestException('You do not own this ticket');
+    }
+
+    // Verify status
+    if (ticket.status !== TicketStatus.ISSUED && ticket.status !== TicketStatus.WON) {
+      throw new BadRequestException('Ticket cannot be transferred (already used or cancelled)');
+    }
+
+    // Find recipient
+    const recipient = await this.userRepository.findOne({
+      where: { email: recipientEmail },
+    });
+
+    if (!recipient) {
+      throw new NotFoundException(`Recipient with email ${recipientEmail} not found`);
+    }
+
+    // Prevent transfer to self
+    if (recipient.id === senderId) {
+      throw new BadRequestException('Cannot transfer ticket to yourself');
+    }
+
+    // Execute Transfer
+    // 1. Invalidate old QR by generating new hash
+    // 2. Change holder
+    ticket.holder_id = recipient.id;
+    ticket.qr_code_hash = uuidv4();
+
+    // Ideally we would log this in a transfer_history table, but for now we just update
+    return await this.ticketsRepository.save(ticket);
   }
 }

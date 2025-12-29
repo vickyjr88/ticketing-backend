@@ -14,7 +14,7 @@ import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 @ApiTags('tickets')
 @Controller('tickets')
 export class TicketsController {
-  constructor(private ticketsService: TicketsService) {}
+  constructor(private ticketsService: TicketsService) { }
 
   @UseGuards(JwtAuthGuard)
   @Get('my-tickets')
@@ -50,5 +50,17 @@ export class TicketsController {
     @Request() req,
   ) {
     return this.ticketsService.checkIn(qrHash, req.user.userId);
+  }
+
+  @UseGuards(JwtAuthGuard)
+  @Post(':id/transfer')
+  @ApiBearerAuth()
+  @ApiOperation({ summary: 'Transfer ticket to another user' })
+  async transferTicket(
+    @Param('id') id: string,
+    @Body('email') email: string,
+    @Request() req,
+  ) {
+    return this.ticketsService.transferTicket(id, req.user.userId, email);
   }
 }
