@@ -27,15 +27,15 @@ import { AdminModule } from './modules/admin/admin.module';
             imports: [ConfigModule],
             useFactory: (configService: ConfigService) => ({
                 type: 'postgres',
-                host: configService.get('DB_HOST'),
+                host: configService.get('DB_HOST') || 'localhost',
                 port: parseInt(configService.get('DB_PORT')) || 5432,
-                username: configService.get('DB_USERNAME'),
-                password: configService.get('DB_PASSWORD'),
-                database: configService.get('DB_NAME') || configService.get('DB_DATABASE'),
+                username: configService.get('DB_USERNAME') || 'postgres',
+                password: configService.get('DB_PASSWORD') || 'postgres',
+                database: configService.get('DB_NAME') || configService.get('DB_DATABASE') || 'ticketing_db',
                 entities: [__dirname + '/**/*.entity{.ts,.js}'],
                 synchronize: false, // Use migrations instead
                 logging: configService.get('NODE_ENV') === 'development',
-                ssl: configService.get('NODE_ENV') === 'production' 
+                ssl: configService.get('NODE_ENV') === 'production'
                     ? { rejectUnauthorized: false }
                     : false,
             }),

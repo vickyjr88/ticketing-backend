@@ -7,6 +7,8 @@ import {
   ManyToOne,
   OneToMany,
   JoinColumn,
+  BeforeInsert,
+  BeforeUpdate,
 } from 'typeorm';
 import { User } from './user.entity';
 import { Ticket } from './ticket.entity';
@@ -79,4 +81,15 @@ export class Order {
 
   @OneToMany(() => Ticket, (ticket) => ticket.order)
   tickets: Ticket[];
+
+  @BeforeInsert()
+  @BeforeUpdate()
+  setDefaultPaymentStatus() {
+    // Prevent string "undefined" or invalid values from being stored
+    if (!this.payment_status || 
+        this.payment_status === 'undefined' as any || 
+        !Object.values(PaymentStatus).includes(this.payment_status)) {
+      this.payment_status = PaymentStatus.PENDING;
+    }
+  }
 }

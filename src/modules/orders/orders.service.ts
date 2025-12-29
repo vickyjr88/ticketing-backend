@@ -19,7 +19,7 @@ export class OrdersService {
     @InjectRepository(Ticket)
     private ticketsRepository: Repository<Ticket>,
     private ticketsService: TicketsService,
-  ) {}
+  ) { }
 
   /**
    * Standard/Group checkout
@@ -103,7 +103,7 @@ export class OrdersService {
   async findById(orderId: string): Promise<Order> {
     const order = await this.ordersRepository.findOne({
       where: { id: orderId },
-      relations: ['user', 'tickets', 'tickets.tier', 'tickets.event'],
+      relations: ['user', 'tickets', 'tickets.tier', 'tickets.event', 'event'],
     });
 
     if (!order) {
@@ -119,8 +119,8 @@ export class OrdersService {
   async getUserOrders(userId: string): Promise<Order[]> {
     return this.ordersRepository.find({
       where: { user_id: userId },
-      relations: ['tickets', 'tickets.tier', 'tickets.event'],
-      order: { created_at: 'DESC' },
+      relations: ['user', 'tickets', 'tickets.tier', 'tickets.event', 'event'],
+      order: { created_at: 'DESC', id: 'DESC' },
     });
   }
 }

@@ -7,7 +7,7 @@ import { InjectRepository } from '@nestjs/typeorm';
 import { Repository, DataSource } from 'typeorm';
 import { Ticket, TicketType, TicketStatus } from '../../entities/ticket.entity';
 import { TicketTier } from '../../entities/ticket-tier.entity';
-import { Order, PaymentProvider } from '../../entities/order.entity';
+import { Order, PaymentProvider, PaymentStatus } from '../../entities/order.entity';
 import { EventsService } from '../events/events.service';
 import * as QRCode from 'qrcode';
 import { v4 as uuidv4 } from 'uuid';
@@ -203,6 +203,7 @@ export class TicketsService {
         event_id: eventId,
         total_amount: totalAmount,
         payment_provider: paymentProvider,
+        payment_status: PaymentStatus.PENDING,
       });
       const savedOrder = await manager.save(Order, order);
 

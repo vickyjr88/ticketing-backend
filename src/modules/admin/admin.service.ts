@@ -139,7 +139,7 @@ export class AdminService {
             .createQueryBuilder('order')
             .leftJoinAndSelect('order.user', 'user')
             .leftJoinAndSelect('order.tickets', 'tickets')
-            .leftJoinAndSelect('tickets.event', 'event') // Load event from tickets
+            .leftJoinAndSelect('order.event', 'event')
             .leftJoinAndSelect('tickets.tier', 'tier')   // Load tier from tickets
             .where('order.id IN (:...ids)', { ids })
             .orderBy('order.created_at', 'DESC')
@@ -147,12 +147,10 @@ export class AdminService {
             .getMany();
 
         const mappedOrders = orders.map((order) => {
-            // Safely get event and tier from first ticket if it exists
+            // Safely get tier from first ticket if it exists
             const firstTicket =
                 order.tickets && order.tickets.length > 0 ? order.tickets[0] : null;
 
-            // In case ticket exists but relation is null (shouldn't happen with correct DB)
-            const event = firstTicket?.event || null;
             const tier = firstTicket?.tier || null;
 
             return {
@@ -175,7 +173,7 @@ export class AdminService {
                     : null,
                 tickets_count: order.tickets?.length || 0,
                 status: order.payment_status,
-                event: event ? { id: event.id, title: event.title } : null,
+                event: order.event ? { id: order.event.id, title: order.event.title } : null,
                 tier: tier ? { id: tier.id, name: tier.name } : null,
             };
         });
