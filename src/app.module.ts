@@ -17,6 +17,7 @@ import { WaitlistModule } from './modules/waitlist/waitlist.module';
 import { PromoModule } from './modules/promo/promo.module';
 import { AnalyticsModule } from './modules/analytics/analytics.module';
 import { EmailModule } from './modules/email/email.module';
+import { ProductsModule } from './modules/products/products.module';
 
 @Module({
     imports: [
@@ -62,6 +63,7 @@ import { EmailModule } from './modules/email/email.module';
         PromoModule,
         AnalyticsModule,
         EmailModule,
+        ProductsModule,
     ],
 })
 export class AppModule { }

@@ -12,6 +12,7 @@ import { TicketTier } from './ticket-tier.entity';
 import { Ticket } from './ticket.entity';
 import { LotteryEntry } from './lottery-entry.entity';
 import { User } from './user.entity';
+import { Product } from './product.entity';
 
 export enum EventStatus {
   DRAFT = 'DRAFT',
@@ -72,6 +73,9 @@ export class Event {
 
   @OneToMany(() => LotteryEntry, (entry) => entry.event)
   lottery_entries: LotteryEntry[];
+
+  @OneToMany(() => Product, (product) => product.event)
+  products: Product[];
 
   @ManyToOne(() => User, (user) => user.created_events)
   @JoinColumn({ name: 'user_id' })

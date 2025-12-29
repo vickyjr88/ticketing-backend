@@ -13,6 +13,7 @@ import {
 import { User } from './user.entity';
 import { Ticket } from './ticket.entity';
 import { Event } from './event.entity';
+import { OrderProduct } from './order-product.entity';
 
 export enum PaymentStatus {
   PENDING = 'PENDING',
@@ -90,6 +91,9 @@ export class Order {
 
   @OneToMany(() => Ticket, (ticket) => ticket.order)
   tickets: Ticket[];
+
+  @OneToMany(() => OrderProduct, (op) => op.order, { cascade: true })
+  order_products: OrderProduct[];
 
   @BeforeInsert()
   @BeforeUpdate()

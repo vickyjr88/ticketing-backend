@@ -7,6 +7,7 @@ import { OrdersController } from './orders.controller';
 import { TicketsModule } from '../tickets/tickets.module';
 import { PaymentsModule } from '../payments/payments.module';
 import { PromoModule } from '../promo/promo.module';
+import { ProductsModule } from '../products/products.module';
 
 @Module({
   imports: [
@@ -14,6 +15,7 @@ import { PromoModule } from '../promo/promo.module';
     TicketsModule,
     PaymentsModule,
     PromoModule,
+    ProductsModule,
   ],
   providers: [OrdersService],
   controllers: [OrdersController],

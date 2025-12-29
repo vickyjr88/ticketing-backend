@@ -14,6 +14,17 @@ class CheckoutItem {
   quantity: number;
 }
 
+class CheckoutProductItem {
+  @ApiProperty()
+  @IsString()
+  productId: string;
+
+  @ApiProperty({ minimum: 1 })
+  @IsNumber()
+  @Min(1)
+  quantity: number;
+}
+
 export class CheckoutDto {
   @ApiProperty()
   @IsString()
@@ -24,6 +35,13 @@ export class CheckoutDto {
   @ValidateNested({ each: true })
   @Type(() => CheckoutItem)
   items: CheckoutItem[];
+
+  @ApiPropertyOptional({ type: [CheckoutProductItem] })
+  @IsOptional()
+  @IsArray()
+  @ValidateNested({ each: true })
+  @Type(() => CheckoutProductItem)
+  products?: CheckoutProductItem[];
 
   @ApiProperty({ enum: PaymentProvider })
   @IsEnum(PaymentProvider)

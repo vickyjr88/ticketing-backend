@@ -11,6 +11,8 @@ import { TicketsService } from '../tickets/tickets.service';
 import { PromoService } from '../promo/promo.service';
 import { CheckoutDto } from './dto/checkout.dto';
 import { AdoptTicketDto } from './dto/adopt-ticket.dto';
+import { ProductsService } from '../products/products.service';
+import { OrderProduct } from '../../entities/order-product.entity';
 
 @Injectable()
 export class OrdersService {
@@ -21,13 +23,14 @@ export class OrdersService {
     private ticketsRepository: Repository<Ticket>,
     private ticketsService: TicketsService,
     private promoService: PromoService,
+    private productsService: ProductsService,
   ) { }
 
   /**
    * Standard/Group checkout with promo code support
    */
   async checkout(userId: string, checkoutDto: CheckoutDto) {
-    const { eventId, items, paymentProvider, promoCode } = checkoutDto;
+    const { eventId, items, products, paymentProvider, promoCode } = checkoutDto;
 
     // Create tickets and order
     const { order, tickets } = await this.ticketsService.purchaseTickets(
@@ -37,10 +40,37 @@ export class OrdersService {
       paymentProvider,
     );
 
+    let productsTotal = 0;
+
+    // Handle products
+    if (products && products.length > 0) {
+      if (!order.order_products) {
+        order.order_products = [];
+      }
+
+      for (const item of products) {
+        const product = await this.productsService.findOne(item.productId);
+
+        // Check stock
+        if (product.stock < item.quantity) {
+          throw new BadRequestException(`Insufficient stock for product ${product.name}`);
+        }
+
+        const op = new OrderProduct();
+        op.product = product;
+        op.quantity = item.quantity;
+        op.unit_price = product.price;
+        op.order = order;
+        order.order_products.push(op);
+
+        productsTotal += Number(product.price) * item.quantity;
+      }
+    }
+
     // Handle promo code if provided
     let discountAmount = 0;
     let promoCodeId: string | null = null;
-    const subtotal = Number(order.total_amount);
+    const subtotal = Number(order.total_amount) + productsTotal;
 
     if (promoCode) {
       const promoResult = await this.promoService.validatePromoCode(
@@ -51,8 +81,7 @@ export class OrdersService {
       );
 
       if (!promoResult.valid) {
-        // Promo code invalid - we've already created the order, so just don't apply discount
-        // In a more strict implementation, you might want to validate before creating the order
+        // Promo code invalid
         console.warn(`Promo code validation failed: ${promoResult.error}`);
       } else {
         discountAmount = promoResult.discount_amount;
@@ -68,8 +97,8 @@ export class OrdersService {
       }
     }
 
-    // Update order with promo discount if applicable
-    if (discountAmount > 0) {
+    // Update order with products total and promo discount
+    if (productsTotal > 0 || discountAmount > 0) {
       const finalAmount = subtotal - discountAmount;
       order.subtotal = subtotal;
       order.discount_amount = discountAmount;

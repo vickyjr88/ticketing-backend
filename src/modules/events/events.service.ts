@@ -2,6 +2,7 @@ import {
   Injectable,
   NotFoundException,
   BadRequestException,
+  Logger,
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
@@ -14,6 +15,8 @@ import { UpdateTierDto } from './dto/update-tier.dto';
 
 @Injectable()
 export class EventsService {
+  private readonly logger = new Logger(EventsService.name);
+
   constructor(
     @InjectRepository(Event)
     private eventsRepository: Repository<Event>,
@@ -40,7 +43,9 @@ export class EventsService {
       query.where('event.status = :status', { status });
     }
 
-    return query.getMany();
+    const events = await query.getMany();
+    this.logger.log(`findAll(${status || 'all'}): Found ${events.length} events`);
+    return events;
   }
 
   async findByUser(userId: string): Promise<Event[]> {
@@ -50,17 +55,21 @@ export class EventsService {
       .where('event.user_id = :userId', { userId })
       .orderBy('event.start_date', 'ASC');
 
-    return query.getMany();
+    const events = await query.getMany();
+    this.logger.log(`findByUser(${userId}): Found ${events.length} events`);
+    return events;
   }
 
   async findPublished(): Promise<Event[]> {
-    return this.findAll(EventStatus.PUBLISHED);
+    const events = await this.findAll(EventStatus.PUBLISHED);
+    this.logger.log(`findPublished: Found ${events.length} published events`);
+    return events;
   }
 
   async findById(id: string): Promise<Event> {
     const event = await this.eventsRepository.findOne({
       where: { id },
-      relations: ['ticket_tiers'],
+      relations: ['ticket_tiers', 'products'],
     });
 
     if (!event) {
