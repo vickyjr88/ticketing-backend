@@ -3,261 +3,275 @@ import * as Brevo from '@getbrevo/brevo';
 
 // Email template types
 export enum EmailTemplate {
-    ORDER_CONFIRMATION = 'ORDER_CONFIRMATION',
-    TICKET_ISSUED = 'TICKET_ISSUED',
-    LOTTERY_ENTRY = 'LOTTERY_ENTRY',
-    LOTTERY_WIN = 'LOTTERY_WIN',
-    LOTTERY_LOSS = 'LOTTERY_LOSS',
-    WAITLIST_JOINED = 'WAITLIST_JOINED',
-    WAITLIST_NOTIFICATION = 'WAITLIST_NOTIFICATION',
-    TICKET_TRANSFER = 'TICKET_TRANSFER',
-    TICKET_RECEIVED = 'TICKET_RECEIVED',
-    EVENT_REMINDER = 'EVENT_REMINDER',
-    WELCOME = 'WELCOME',
-    PASSWORD_RESET = 'PASSWORD_RESET',
+  ORDER_CONFIRMATION = 'ORDER_CONFIRMATION',
+  TICKET_ISSUED = 'TICKET_ISSUED',
+  LOTTERY_ENTRY = 'LOTTERY_ENTRY',
+  LOTTERY_WIN = 'LOTTERY_WIN',
+  LOTTERY_LOSS = 'LOTTERY_LOSS',
+  WAITLIST_JOINED = 'WAITLIST_JOINED',
+  WAITLIST_NOTIFICATION = 'WAITLIST_NOTIFICATION',
+  TICKET_TRANSFER = 'TICKET_TRANSFER',
+  TICKET_RECEIVED = 'TICKET_RECEIVED',
+  EVENT_REMINDER = 'EVENT_REMINDER',
+  WELCOME = 'WELCOME',
+  PASSWORD_RESET = 'PASSWORD_RESET',
 }
 
 interface EmailParams {
-    to: string;
-    toName?: string;
-    subject: string;
-    htmlContent: string;
-    textContent?: string;
+  to: string;
+  toName?: string;
+  subject: string;
+  htmlContent: string;
+  textContent?: string;
 }
 
 interface OrderEmailData {
-    customerName: string;
-    customerEmail: string;
-    orderId: string;
-    eventTitle: string;
-    eventDate: string;
-    eventLocation: string;
-    ticketCount: number;
-    totalAmount: number;
-    currency?: string;
+  customerName: string;
+  customerEmail: string;
+  orderId: string;
+  eventTitle: string;
+  eventDate: string;
+  eventLocation: string;
+  ticketCount: number;
+  totalAmount: number;
+  currency?: string;
 }
 
 interface LotteryEmailData {
-    customerName: string;
-    customerEmail: string;
-    eventTitle: string;
-    eventDate: string;
-    isWinner: boolean;
-    ticketDetails?: string;
+  customerName: string;
+  customerEmail: string;
+  eventTitle: string;
+  eventDate: string;
+  isWinner: boolean;
+  ticketDetails?: string;
 }
 
 interface WaitlistEmailData {
-    customerName: string;
-    customerEmail: string;
-    eventTitle: string;
-    tierName: string;
-    purchaseUrl?: string;
+  customerName: string;
+  customerEmail: string;
+  eventTitle: string;
+  tierName: string;
+  purchaseUrl?: string;
 }
 
 interface TicketTransferData {
-    senderName: string;
-    recipientEmail: string;
-    recipientName: string;
-    eventTitle: string;
-    eventDate: string;
-    ticketType: string;
+  senderName: string;
+  recipientEmail: string;
+  recipientName: string;
+  eventTitle: string;
+  eventDate: string;
+  ticketType: string;
 }
 
 interface EventReminderData {
-    customerName: string;
-    customerEmail: string;
-    eventTitle: string;
-    eventDate: string;
-    eventLocation: string;
-    ticketCount: number;
+  customerName: string;
+  customerEmail: string;
+  eventTitle: string;
+  eventDate: string;
+  eventLocation: string;
+  ticketCount: number;
 }
 
 @Injectable()
 export class EmailService {
-    private readonly logger = new Logger(EmailService.name);
-    private readonly apiInstance: Brevo.TransactionalEmailsApi;
-    private readonly senderEmail = 'tickets@pipita.co.ke';
-    private readonly senderName = 'Pipita Tickets';
+  private readonly logger = new Logger(EmailService.name);
+  private readonly apiInstance: Brevo.TransactionalEmailsApi;
+  private readonly senderEmail = 'tickets@pipita.co.ke';
+  private readonly senderName = 'Pipita Tickets';
 
-    constructor() {
-        const apiKey = process.env.BREVO_API_KEY;
-        
-        if (!apiKey) {
-            this.logger.error('BREVO_API_KEY environment variable is not set');
-            throw new Error('BREVO_API_KEY environment variable is required');
-        }
+  constructor() {
+    const apiKey = process.env.BREVO_API_KEY;
 
-        this.apiInstance = new Brevo.TransactionalEmailsApi();
-        this.apiInstance.setApiKey(Brevo.TransactionalEmailsApiApiKeys.apiKey, apiKey);
+    if (!apiKey) {
+      this.logger.error('BREVO_API_KEY environment variable is not set');
+      throw new Error('BREVO_API_KEY environment variable is required');
     }
 
-    /**
-     * Send a raw email
-     */
-    async sendEmail(params: EmailParams): Promise<boolean> {
-        try {
-            const sendSmtpEmail = new Brevo.SendSmtpEmail();
+    this.apiInstance = new Brevo.TransactionalEmailsApi();
+    this.apiInstance.setApiKey(Brevo.TransactionalEmailsApiApiKeys.apiKey, apiKey);
+  }
 
-            sendSmtpEmail.sender = {
-                name: this.senderName,
-                email: this.senderEmail,
-            };
+  /**
+   * Send a raw email
+   */
+  async sendEmail(params: EmailParams): Promise<boolean> {
+    try {
+      const sendSmtpEmail = new Brevo.SendSmtpEmail();
 
-            sendSmtpEmail.to = [{
-                email: params.to,
-                name: params.toName || params.to,
-            }];
+      sendSmtpEmail.sender = {
+        name: this.senderName,
+        email: this.senderEmail,
+      };
 
-            sendSmtpEmail.subject = params.subject;
-            sendSmtpEmail.htmlContent = params.htmlContent;
+      sendSmtpEmail.to = [{
+        email: params.to,
+        name: params.toName || params.to,
+      }];
 
-            if (params.textContent) {
-                sendSmtpEmail.textContent = params.textContent;
-            }
+      sendSmtpEmail.subject = params.subject;
+      sendSmtpEmail.htmlContent = params.htmlContent;
 
-            await this.apiInstance.sendTransacEmail(sendSmtpEmail);
-            this.logger.log(`Email sent successfully to ${params.to}`);
-            return true;
-        } catch (error) {
-            this.logger.error(`Failed to send email to ${params.to}:`, error);
-            return false;
-        }
+      if (params.textContent) {
+        sendSmtpEmail.textContent = params.textContent;
+      }
+
+      await this.apiInstance.sendTransacEmail(sendSmtpEmail);
+      this.logger.log(`Email sent successfully to ${params.to}`);
+      return true;
+    } catch (error) {
+      this.logger.error(`Failed to send email to ${params.to}:`, error);
+      return false;
     }
+  }
 
-    /**
-     * Send order confirmation email
-     */
-    async sendOrderConfirmation(data: OrderEmailData): Promise<boolean> {
-        const html = this.generateOrderConfirmationHtml(data);
+  /**
+   * Send order confirmation email
+   */
+  async sendOrderConfirmation(data: OrderEmailData): Promise<boolean> {
+    const html = this.generateOrderConfirmationHtml(data);
 
-        return this.sendEmail({
-            to: data.customerEmail,
-            toName: data.customerName,
-            subject: `🎟️ Order Confirmed - ${data.eventTitle}`,
-            htmlContent: html,
-        });
-    }
+    return this.sendEmail({
+      to: data.customerEmail,
+      toName: data.customerName,
+      subject: `🎟️ Order Confirmed - ${data.eventTitle}`,
+      htmlContent: html,
+    });
+  }
 
-    /**
-     * Send lottery entry confirmation
-     */
-    async sendLotteryEntryConfirmation(data: LotteryEmailData): Promise<boolean> {
-        const html = this.generateLotteryEntryHtml(data);
+  /**
+   * Send lottery entry confirmation
+   */
+  async sendLotteryEntryConfirmation(data: LotteryEmailData): Promise<boolean> {
+    const html = this.generateLotteryEntryHtml(data);
 
-        return this.sendEmail({
-            to: data.customerEmail,
-            toName: data.customerName,
-            subject: `🍀 Lottery Entry Confirmed - ${data.eventTitle}`,
-            htmlContent: html,
-        });
-    }
+    return this.sendEmail({
+      to: data.customerEmail,
+      toName: data.customerName,
+      subject: `🍀 Lottery Entry Confirmed - ${data.eventTitle}`,
+      htmlContent: html,
+    });
+  }
 
-    /**
-     * Send lottery result notification
-     */
-    async sendLotteryResult(data: LotteryEmailData): Promise<boolean> {
-        const html = data.isWinner
-            ? this.generateLotteryWinHtml(data)
-            : this.generateLotteryLossHtml(data);
+  /**
+   * Send lottery result notification
+   */
+  async sendLotteryResult(data: LotteryEmailData): Promise<boolean> {
+    const html = data.isWinner
+      ? this.generateLotteryWinHtml(data)
+      : this.generateLotteryLossHtml(data);
 
-        return this.sendEmail({
-            to: data.customerEmail,
-            toName: data.customerName,
-            subject: data.isWinner
-                ? `🎉 Congratulations! You won tickets to ${data.eventTitle}!`
-                : `Lottery Results - ${data.eventTitle}`,
-            htmlContent: html,
-        });
-    }
+    return this.sendEmail({
+      to: data.customerEmail,
+      toName: data.customerName,
+      subject: data.isWinner
+        ? `🎉 Congratulations! You won tickets to ${data.eventTitle}!`
+        : `Lottery Results - ${data.eventTitle}`,
+      htmlContent: html,
+    });
+  }
 
-    /**
-     * Send waitlist joined confirmation
-     */
-    async sendWaitlistJoined(data: WaitlistEmailData): Promise<boolean> {
-        const html = this.generateWaitlistJoinedHtml(data);
+  /**
+   * Send waitlist joined confirmation
+   */
+  async sendWaitlistJoined(data: WaitlistEmailData): Promise<boolean> {
+    const html = this.generateWaitlistJoinedHtml(data);
 
-        return this.sendEmail({
-            to: data.customerEmail,
-            toName: data.customerName,
-            subject: `📋 Waitlist Confirmed - ${data.eventTitle}`,
-            htmlContent: html,
-        });
-    }
+    return this.sendEmail({
+      to: data.customerEmail,
+      toName: data.customerName,
+      subject: `📋 Waitlist Confirmed - ${data.eventTitle}`,
+      htmlContent: html,
+    });
+  }
 
-    /**
-     * Send waitlist notification (tickets available)
-     */
-    async sendWaitlistNotification(data: WaitlistEmailData): Promise<boolean> {
-        const html = this.generateWaitlistNotificationHtml(data);
+  /**
+   * Send waitlist notification (tickets available)
+   */
+  async sendWaitlistNotification(data: WaitlistEmailData): Promise<boolean> {
+    const html = this.generateWaitlistNotificationHtml(data);
 
-        return this.sendEmail({
-            to: data.customerEmail,
-            toName: data.customerName,
-            subject: `🚨 Tickets Available! - ${data.eventTitle}`,
-            htmlContent: html,
-        });
-    }
+    return this.sendEmail({
+      to: data.customerEmail,
+      toName: data.customerName,
+      subject: `🚨 Tickets Available! - ${data.eventTitle}`,
+      htmlContent: html,
+    });
+  }
 
-    /**
-     * Send ticket transfer notification to sender
-     */
-    async sendTicketTransferSent(data: TicketTransferData, senderEmail: string): Promise<boolean> {
-        const html = this.generateTransferSentHtml(data);
+  /**
+   * Send ticket transfer notification to sender
+   */
+  async sendTicketTransferSent(data: TicketTransferData, senderEmail: string): Promise<boolean> {
+    const html = this.generateTransferSentHtml(data);
 
-        return this.sendEmail({
-            to: senderEmail,
-            toName: data.senderName,
-            subject: `🎟️ Ticket Transfer Sent - ${data.eventTitle}`,
-            htmlContent: html,
-        });
-    }
+    return this.sendEmail({
+      to: senderEmail,
+      toName: data.senderName,
+      subject: `🎟️ Ticket Transfer Sent - ${data.eventTitle}`,
+      htmlContent: html,
+    });
+  }
 
-    /**
-     * Send ticket received notification to recipient
-     */
-    async sendTicketReceived(data: TicketTransferData): Promise<boolean> {
-        const html = this.generateTicketReceivedHtml(data);
+  /**
+   * Send ticket received notification to recipient
+   */
+  async sendTicketReceived(data: TicketTransferData): Promise<boolean> {
+    const html = this.generateTicketReceivedHtml(data);
 
-        return this.sendEmail({
-            to: data.recipientEmail,
-            toName: data.recipientName,
-            subject: `🎁 You received a ticket to ${data.eventTitle}!`,
-            htmlContent: html,
-        });
-    }
+    return this.sendEmail({
+      to: data.recipientEmail,
+      toName: data.recipientName,
+      subject: `🎁 You received a ticket to ${data.eventTitle}!`,
+      htmlContent: html,
+    });
+  }
 
-    /**
-     * Send event reminder
-     */
-    async sendEventReminder(data: EventReminderData): Promise<boolean> {
-        const html = this.generateEventReminderHtml(data);
+  /**
+   * Send event reminder
+   */
+  async sendEventReminder(data: EventReminderData): Promise<boolean> {
+    const html = this.generateEventReminderHtml(data);
 
-        return this.sendEmail({
-            to: data.customerEmail,
-            toName: data.customerName,
-            subject: `⏰ Reminder: ${data.eventTitle} is tomorrow!`,
-            htmlContent: html,
-        });
-    }
+    return this.sendEmail({
+      to: data.customerEmail,
+      toName: data.customerName,
+      subject: `⏰ Reminder: ${data.eventTitle} is tomorrow!`,
+      htmlContent: html,
+    });
+  }
 
-    /**
-     * Send welcome email
-     */
-    async sendWelcomeEmail(email: string, name: string): Promise<boolean> {
-        const html = this.generateWelcomeHtml(name);
+  /**
+   * Send welcome email
+   */
+  async sendWelcomeEmail(email: string, name: string): Promise<boolean> {
+    const html = this.generateWelcomeHtml(name);
 
-        return this.sendEmail({
-            to: email,
-            toName: name,
-            subject: '🎉 Welcome to Pipita Tickets!',
-            htmlContent: html,
-        });
-    }
+    return this.sendEmail({
+      to: email,
+      toName: name,
+      subject: '🎉 Welcome to Pipita Tickets!',
+      htmlContent: html,
+    });
+  }
 
-    // ==================== HTML Templates ====================
+  /**
+   * Send password reset email
+   */
+  async sendPasswordResetEmail(email: string, name: string, token: string): Promise<boolean> {
+    const html = this.generatePasswordResetHtml(name, token);
 
-    private getBaseTemplate(content: string): string {
-        return `
+    return this.sendEmail({
+      to: email,
+      toName: name,
+      subject: '🔐 Reset Your Password',
+      htmlContent: html,
+    });
+  }
+
+  // ==================== HTML Templates ====================
+
+  private getBaseTemplate(content: string): string {
+    return `
 <!DOCTYPE html>
 <html>
 <head>
@@ -381,11 +395,11 @@ export class EmailService {
   </div>
 </body>
 </html>`;
-    }
+  }
 
-    private generateOrderConfirmationHtml(data: OrderEmailData): string {
-        const currency = data.currency || 'KES';
-        const content = `
+  private generateOrderConfirmationHtml(data: OrderEmailData): string {
+    const currency = data.currency || 'KES';
+    const content = `
       <div class="header">
         <div class="emoji">🎟️</div>
         <h1>Order Confirmed!</h1>
@@ -432,11 +446,11 @@ export class EmailService {
         </p>
       </div>
     `;
-        return this.getBaseTemplate(content);
-    }
+    return this.getBaseTemplate(content);
+  }
 
-    private generateLotteryEntryHtml(data: LotteryEmailData): string {
-        const content = `
+  private generateLotteryEntryHtml(data: LotteryEmailData): string {
+    const content = `
       <div class="header" style="background: linear-gradient(135deg, #10b981 0%, #059669 100%);">
         <div class="emoji">🍀</div>
         <h1>Lottery Entry Confirmed!</h1>
@@ -463,11 +477,11 @@ export class EmailService {
         </p>
       </div>
     `;
-        return this.getBaseTemplate(content);
-    }
+    return this.getBaseTemplate(content);
+  }
 
-    private generateLotteryWinHtml(data: LotteryEmailData): string {
-        const content = `
+  private generateLotteryWinHtml(data: LotteryEmailData): string {
+    const content = `
       <div class="header" style="background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%);">
         <div class="emoji">🎉</div>
         <h1>Congratulations, Winner!</h1>
@@ -506,11 +520,11 @@ export class EmailService {
         </center>
       </div>
     `;
-        return this.getBaseTemplate(content);
-    }
+    return this.getBaseTemplate(content);
+  }
 
-    private generateLotteryLossHtml(data: LotteryEmailData): string {
-        const content = `
+  private generateLotteryLossHtml(data: LotteryEmailData): string {
+    const content = `
       <div class="header" style="background: linear-gradient(135deg, #64748b 0%, #475569 100%);">
         <div class="emoji">🎫</div>
         <h1>Lottery Results</h1>
@@ -533,11 +547,11 @@ export class EmailService {
         </center>
       </div>
     `;
-        return this.getBaseTemplate(content);
-    }
+    return this.getBaseTemplate(content);
+  }
 
-    private generateWaitlistJoinedHtml(data: WaitlistEmailData): string {
-        const content = `
+  private generateWaitlistJoinedHtml(data: WaitlistEmailData): string {
+    const content = `
       <div class="header" style="background: linear-gradient(135deg, #8b5cf6 0%, #7c3aed 100%);">
         <div class="emoji">📋</div>
         <h1>Waitlist Confirmed</h1>
@@ -564,11 +578,11 @@ export class EmailService {
         </p>
       </div>
     `;
-        return this.getBaseTemplate(content);
-    }
+    return this.getBaseTemplate(content);
+  }
 
-    private generateWaitlistNotificationHtml(data: WaitlistEmailData): string {
-        const content = `
+  private generateWaitlistNotificationHtml(data: WaitlistEmailData): string {
+    const content = `
       <div class="header" style="background: linear-gradient(135deg, #ef4444 0%, #dc2626 100%);">
         <div class="emoji">🚨</div>
         <h1>Tickets Are Available!</h1>
@@ -600,11 +614,11 @@ export class EmailService {
         </center>
       </div>
     `;
-        return this.getBaseTemplate(content);
-    }
+    return this.getBaseTemplate(content);
+  }
 
-    private generateTransferSentHtml(data: TicketTransferData): string {
-        const content = `
+  private generateTransferSentHtml(data: TicketTransferData): string {
+    const content = `
       <div class="header">
         <div class="emoji">🎟️</div>
         <h1>Ticket Transfer Sent</h1>
@@ -635,11 +649,11 @@ export class EmailService {
         <p>The recipient has been notified and the ticket is now in their account.</p>
       </div>
     `;
-        return this.getBaseTemplate(content);
-    }
+    return this.getBaseTemplate(content);
+  }
 
-    private generateTicketReceivedHtml(data: TicketTransferData): string {
-        const content = `
+  private generateTicketReceivedHtml(data: TicketTransferData): string {
+    const content = `
       <div class="header" style="background: linear-gradient(135deg, #10b981 0%, #059669 100%);">
         <div class="emoji">🎁</div>
         <h1>You Received a Ticket!</h1>
@@ -670,11 +684,11 @@ export class EmailService {
         </center>
       </div>
     `;
-        return this.getBaseTemplate(content);
-    }
+    return this.getBaseTemplate(content);
+  }
 
-    private generateEventReminderHtml(data: EventReminderData): string {
-        const content = `
+  private generateEventReminderHtml(data: EventReminderData): string {
+    const content = `
       <div class="header" style="background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%);">
         <div class="emoji">⏰</div>
         <h1>Event Reminder</h1>
@@ -715,11 +729,11 @@ export class EmailService {
         <p style="margin-top: 24px; text-align: center;">See you there! 🎉</p>
       </div>
     `;
-        return this.getBaseTemplate(content);
-    }
+    return this.getBaseTemplate(content);
+  }
 
-    private generateWelcomeHtml(name: string): string {
-        const content = `
+  private generateWelcomeHtml(name: string): string {
+    const content = `
       <div class="header">
         <div class="emoji">🎉</div>
         <h1>Welcome to Pipita!</h1>
@@ -745,6 +759,38 @@ export class EmailService {
         </p>
       </div>
     `;
-        return this.getBaseTemplate(content);
-    }
+    return this.getBaseTemplate(content);
+  }
+
+  private generatePasswordResetHtml(name: string, token: string): string {
+    // In a real app, this would link to the frontend reset password page
+    const resetUrl = `https://pipita.co.ke/auth/reset-password?token=${token}`;
+
+    const content = `
+      <div class="header">
+        <div class="emoji">🔐</div>
+        <h1>Reset Your Password</h1>
+      </div>
+      <div class="content">
+        <p>Hi ${name},</p>
+        <p>We received a request to reset your password for your Pipita Tickets account.</p>
+        
+        <p>If you didn't request this, you can safely ignore this email.</p>
+        
+        <center>
+          <a href="${resetUrl}" class="button">Reset Password</a>
+        </center>
+        
+        <p style="margin-top: 24px; font-size: 14px; color: #64748b;">
+          This link will expire in 1 hour.
+        </p>
+        
+        <p style="margin-top: 24px; font-size: 12px; color: #94a3b8; word-break: break-all;">
+          If the button doesn't work, copy and paste this link into your browser:<br>
+          ${resetUrl}
+        </p>
+      </div>
+    `;
+    return this.getBaseTemplate(content);
+  }
 }

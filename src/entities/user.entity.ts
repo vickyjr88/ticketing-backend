@@ -73,4 +73,12 @@ export class User {
 
   @Column({ nullable: true })
   assigned_gate: string; // For scanners
+
+  @Column({ nullable: true })
+  @Exclude()
+  reset_password_token: string;
+
+  @Column({ type: 'timestamp', nullable: true })
+  @Exclude()
+  reset_password_expires: Date;
 }

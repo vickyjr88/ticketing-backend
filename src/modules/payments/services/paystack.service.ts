@@ -37,6 +37,22 @@ export class PaystackService {
         callbackUrl?: string,
     ): Promise<any> {
         try {
+            const apiKey = this.configService.get('PAYSTACK_SECRET_KEY');
+            
+            // Handle dummy/development key
+            if (apiKey === 'dummy-key-for-development') {
+                this.logger.log('Using dummy Paystack key - returning mock response');
+                return {
+                    status: true,
+                    message: 'Authorization URL created (mock)',
+                    data: {
+                        authorization_url: `https://checkout.paystack.com/mock-${orderId}`,
+                        access_code: 'mock_access_code',
+                        reference: `ORDER_${orderId}_${Date.now()}`,
+                    },
+                };
+            }
+
             // Get currency from config or default to NGN (Nigerian Naira)
             // Paystack supports: NGN, GHS, ZAR, USD
             const currency = this.configService.get('PAYSTACK_CURRENCY') || 'NGN';
@@ -78,6 +94,42 @@ export class PaystackService {
      */
     async verifyTransaction(reference: string): Promise<any> {
         try {
+            const apiKey = this.configService.get('PAYSTACK_SECRET_KEY');
+            
+            // Handle dummy/development key
+            if (apiKey === 'dummy-key-for-development') {
+                this.logger.log('Using dummy Paystack key - returning mock verification');
+                return {
+                    status: true,
+                    message: 'Verification successful (mock)',
+                    data: {
+                        reference,
+                        amount: 2500, // Mock amount in kobo
+                        status: 'success',
+                        gateway_response: 'Successful (mock)',
+                        paid_at: new Date().toISOString(),
+                        created_at: new Date().toISOString(),
+                        channel: 'card',
+                        currency: 'NGN',
+                        authorization: {
+                            authorization_code: 'mock_auth_code',
+                            bin: '408408',
+                            last4: '4081',
+                            exp_month: '12',
+                            exp_year: '2030',
+                            channel: 'card',
+                            card_type: 'visa',
+                            bank: 'TEST BANK',
+                            country_code: 'NG',
+                            brand: 'visa',
+                        },
+                        customer: {
+                            email: 'test@example.com',
+                        },
+                    },
+                };
+            }
+
             const response = await axios.get(
                 `${this.baseUrl}/transaction/verify/${reference}`,
                 {

@@ -12,7 +12,7 @@ export class UsersService {
   constructor(
     @InjectRepository(User)
     private usersRepository: Repository<User>,
-  ) {}
+  ) { }
 
   async create(userData: Partial<User>): Promise<User> {
     // Check if user already exists
@@ -54,5 +54,8 @@ export class UsersService {
     if (result.affected === 0) {
       throw new NotFoundException('User not found');
     }
+  }
+  async findByResetToken(token: string): Promise<User | undefined> {
+    return this.usersRepository.findOne({ where: { reset_password_token: token } });
   }
 }
