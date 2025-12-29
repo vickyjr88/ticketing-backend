@@ -13,6 +13,7 @@ import { OrdersModule } from './modules/orders/orders.module';
 import { PaymentsModule } from './modules/payments/payments.module';
 import { LotteryModule } from './modules/lottery/lottery.module';
 import { AdminModule } from './modules/admin/admin.module';
+import { WaitlistModule } from './modules/waitlist/waitlist.module';
 
 @Module({
     imports: [
@@ -54,6 +55,7 @@ import { AdminModule } from './modules/admin/admin.module';
         PaymentsModule,
         LotteryModule,
         AdminModule,
+        WaitlistModule,
     ],
 })
 export class AppModule { }
