@@ -340,10 +340,11 @@ export class TicketsService {
       throw new BadRequestException('Ticket cannot be transferred (already used or cancelled)');
     }
 
-    // Find recipient
-    const recipient = await this.userRepository.findOne({
-      where: { email: recipientEmail },
-    });
+    // Find recipient (case-insensitive)
+    const recipient = await this.userRepository
+      .createQueryBuilder('user')
+      .where('LOWER(user.email) = LOWER(:email)', { email: recipientEmail })
+      .getOne();
 
     if (!recipient) {
       throw new NotFoundException(`Recipient with email ${recipientEmail} not found`);
@@ -357,6 +358,8 @@ export class TicketsService {
     // Execute Transfer
     // 1. Invalidate old QR by generating new hash
     // 2. Change holder
+    // IMPORTANT: Update both FK and relation object to ensure TypeORM saves it correctly
+    ticket.holder = recipient;
     ticket.holder_id = recipient.id;
     ticket.qr_code_hash = uuidv4();
 
