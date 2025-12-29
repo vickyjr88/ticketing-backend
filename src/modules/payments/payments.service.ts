@@ -34,7 +34,7 @@ export class PaymentsService {
   ): Promise<any> {
     const order = await this.ordersRepository.findOne({
       where: { id: orderId },
-      relations: ['user'],
+      relations: ['user', 'event'],
     });
 
     if (!order) {
@@ -44,6 +44,9 @@ export class PaymentsService {
     if (order.payment_status === PaymentStatus.PAID) {
       throw new BadRequestException('Order already paid');
     }
+
+    // Log order details for debugging
+    this.logger.log(`Initiating payment for order ${orderId}: provider=${order.payment_provider}, user_id=${order.user_id}, hasUser=${!!order.user}, email=${order.user?.email}`);
 
     switch (order.payment_provider) {
       case PaymentProvider.MPESA:
@@ -68,9 +71,22 @@ export class PaymentsService {
         );
 
       case PaymentProvider.PAYSTACK:
-        if (!order.user?.email) {
-          throw new BadRequestException('User email required for Paystack');
+        if (!successUrl) {
+          throw new BadRequestException('Success URL (callback URL) is required for Paystack');
         }
+        
+        if (!order.user) {
+          this.logger.error(`Order ${orderId} has no user relation loaded. user_id: ${order.user_id}`);
+          throw new BadRequestException('Unable to load order user information. Please try again.');
+        }
+        
+        if (!order.user.email) {
+          this.logger.error(`User ${order.user.id} has no email address`);
+          throw new BadRequestException(`User email is required for Paystack payment. Please update your profile with a valid email address.`);
+        }
+        
+        this.logger.log(`Initializing Paystack payment for ${order.user.email}, amount: ${order.total_amount}`);
+        
         return this.paystackService.initializeTransaction(
           order.user.email,
           Number(order.total_amount),

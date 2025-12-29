@@ -15,6 +15,7 @@ import { ApiTags, ApiOperation, ApiBearerAuth, ApiExcludeEndpoint } from '@nestj
 import { PaymentsService } from './payments.service';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { Request } from 'express';
+import { InitiatePaymentDto } from './dto/initiate-payment.dto';
 
 @ApiTags('payments')
 @Controller('payments')
@@ -27,15 +28,13 @@ export class PaymentsController {
   @ApiOperation({ summary: 'Initiate payment for an order' })
   async initiatePayment(
     @Param('orderId') orderId: string,
-    @Body('phoneNumber') phoneNumber?: string,
-    @Body('successUrl') successUrl?: string,
-    @Body('cancelUrl') cancelUrl?: string,
+    @Body() dto: InitiatePaymentDto,
   ) {
     return this.paymentsService.initiatePayment(
       orderId,
-      phoneNumber,
-      successUrl,
-      cancelUrl,
+      dto.phoneNumber,
+      dto.successUrl,
+      dto.cancelUrl,
     );
   }
 
