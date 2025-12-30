@@ -19,10 +19,22 @@ export class S3Service {
             this.logger.warn('AWS_S3_BUCKET not configured. S3 uploads will fail.');
         }
 
-        this.s3Client = new S3Client({
+        const s3Config: any = {
             region: this.region,
-            // EC2 IAM role will provide credentials automatically
-        });
+        };
+
+        // Use explicit credentials if provided, otherwise fallback to IAM role/instance profile
+        if (process.env.AWS_ACCESS_KEY_ID && process.env.AWS_SECRET_ACCESS_KEY) {
+            s3Config.credentials = {
+                accessKeyId: process.env.AWS_ACCESS_KEY_ID,
+                secretAccessKey: process.env.AWS_SECRET_ACCESS_KEY,
+            };
+            this.logger.log('Using explicit AWS credentials from environment variables');
+        } else {
+            this.logger.log('Using default AWS credential provider chain (IAM role/instance profile)');
+        }
+
+        this.s3Client = new S3Client(s3Config);
 
         this.logger.log(`S3 Service initialized. Bucket: ${this.bucketName}, Region: ${this.region}`);
     }
