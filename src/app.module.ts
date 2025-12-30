@@ -18,6 +18,7 @@ import { PromoModule } from './modules/promo/promo.module';
 import { AnalyticsModule } from './modules/analytics/analytics.module';
 import { EmailModule } from './modules/email/email.module';
 import { ProductsModule } from './modules/products/products.module';
+import { MediaModule } from './modules/media/media.module';
 
 @Module({
     imports: [
@@ -64,6 +65,7 @@ import { ProductsModule } from './modules/products/products.module';
         AnalyticsModule,
         EmailModule,
         ProductsModule,
+        MediaModule,
     ],
 })
 export class AppModule { }

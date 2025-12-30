@@ -142,6 +142,51 @@ export class S3Service {
     }
 
     /**
+     * Upload generic media to S3
+     */
+    async uploadMedia(
+        file: Express.Multer.File,
+    ): Promise<{ url: string; key: string, filename: string, mimetype: string, size: number }> {
+        if (!this.bucketName) {
+            throw new Error('S3 bucket not configured');
+        }
+
+        const fileExtension = file.originalname.split('.').pop();
+        const fileName = `${uuidv4()}.${fileExtension}`;
+        const key = `media/${fileName}`;
+
+        try {
+            const command = new PutObjectCommand({
+                Bucket: this.bucketName,
+                Key: key,
+                Body: file.buffer,
+                ContentType: file.mimetype,
+                CacheControl: 'max-age=31536000',
+                Metadata: {
+                    uploadedAt: new Date().toISOString(),
+                    originalName: file.originalname
+                },
+            });
+
+            await this.s3Client.send(command);
+
+            const imageUrl = `${this.cdnUrl}/${key}`;
+            this.logger.log(`Media uploaded successfully: ${imageUrl}`);
+
+            return {
+                url: imageUrl,
+                key: key,
+                filename: fileName,
+                mimetype: file.mimetype,
+                size: file.size
+            };
+        } catch (error) {
+            this.logger.error(`Failed to upload media to S3: ${error.message}`, error.stack);
+            throw new Error(`Failed to upload media: ${error.message}`);
+        }
+    }
+
+    /**
      * Get S3 configuration info
      */
     getConfig() {
