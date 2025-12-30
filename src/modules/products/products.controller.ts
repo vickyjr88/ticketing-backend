@@ -19,9 +19,12 @@ export class ProductsController {
     }
 
     @Get()
-    @ApiOperation({ summary: 'Get products by event ID' })
-    findAll(@Query('eventId') eventId: string) {
-        return this.productsService.findAllByEvent(eventId);
+    @ApiOperation({ summary: 'Get products by event ID or all active' })
+    findAll(@Query('eventId') eventId?: string) {
+        if (eventId) {
+            return this.productsService.findAllByEvent(eventId);
+        }
+        return this.productsService.findAllActive();
     }
 
     @Get(':id')

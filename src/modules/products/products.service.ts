@@ -28,6 +28,13 @@ export class ProductsService {
         });
     }
 
+    async findAllActive(): Promise<Product[]> {
+        return this.productsRepository.find({
+            where: { active: true },
+            relations: ['event'],
+        });
+    }
+
     async findOne(id: string): Promise<Product> {
         const product = await this.productsRepository.findOne({ where: { id } });
         if (!product) {
