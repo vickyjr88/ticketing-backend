@@ -11,6 +11,7 @@ import { Ticket, TicketStatus } from '../../entities/ticket.entity';
 import { Event } from '../../entities/event.entity';
 import { User } from '../../entities/user.entity';
 import { EmailService } from '../email/email.service';
+import { PaginatedResult, createPaginatedResult } from '../../common/dto/pagination.dto';
 
 @Injectable()
 export class LotteryService {
@@ -259,14 +260,17 @@ export class LotteryService {
   }
 
   /**
-   * Get user's lottery entries
+   * Get user's lottery entries with pagination
    */
-  async getUserEntries(userId: string): Promise<LotteryEntry[]> {
-    return this.lotteryRepository.find({
+  async getUserEntries(userId: string, page: number = 1, limit: number = 20): Promise<PaginatedResult<LotteryEntry>> {
+    const [data, total] = await this.lotteryRepository.findAndCount({
       where: { user_id: userId },
       relations: ['event'],
       order: { created_at: 'DESC' },
+      skip: (page - 1) * limit,
+      take: limit,
     });
+    return createPaginatedResult(data, total, page, limit);
   }
 
   /**

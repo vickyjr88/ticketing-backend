@@ -7,11 +7,14 @@ import {
   UseGuards,
   Request,
   Body,
+  Query,
+  ParseIntPipe,
+  DefaultValuePipe,
 } from '@nestjs/common';
 import { RolesGuard } from '../auth/guards/roles.guard';
 import { Roles } from '../auth/decorators/roles.decorator';
 import { UserRole } from '../../entities/user.entity';
-import { ApiTags, ApiOperation, ApiBearerAuth } from '@nestjs/swagger';
+import { ApiTags, ApiOperation, ApiBearerAuth, ApiQuery } from '@nestjs/swagger';
 import { LotteryService } from './lottery.service';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 
@@ -74,9 +77,15 @@ export class LotteryController {
   @UseGuards(JwtAuthGuard)
   @Get('my-entries')
   @ApiBearerAuth()
-  @ApiOperation({ summary: 'Get current user lottery entries' })
-  async getMyEntries(@Request() req) {
-    return this.lotteryService.getUserEntries(req.user.userId);
+  @ApiOperation({ summary: 'Get current user lottery entries with pagination' })
+  @ApiQuery({ name: 'page', required: false, type: Number })
+  @ApiQuery({ name: 'limit', required: false, type: Number })
+  async getMyEntries(
+    @Request() req,
+    @Query('page', new DefaultValuePipe(1), ParseIntPipe) page: number,
+    @Query('limit', new DefaultValuePipe(20), ParseIntPipe) limit: number,
+  ) {
+    return this.lotteryService.getUserEntries(req.user.userId, page, limit);
   }
 
   @UseGuards(JwtAuthGuard)
