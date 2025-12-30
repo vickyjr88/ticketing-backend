@@ -12,11 +12,11 @@ export class S3Service {
 
     constructor() {
         this.region = process.env.AWS_S3_REGION || 'us-east-1';
-        this.bucketName = process.env.AWS_S3_BUCKET_NAME;
+        this.bucketName = process.env.AWS_S3_BUCKET;
         this.cdnUrl = process.env.CDN_URL || process.env.AWS_S3_BUCKET_URL;
 
         if (!this.bucketName) {
-            this.logger.warn('AWS_S3_BUCKET_NAME not configured. S3 uploads will fail.');
+            this.logger.warn('AWS_S3_BUCKET not configured. S3 uploads will fail.');
         }
 
         this.s3Client = new S3Client({

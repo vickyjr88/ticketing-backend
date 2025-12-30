@@ -74,7 +74,7 @@ MPESA_CALLBACK_URL=...
 MPESA_ENVIRONMENT=sandbox
 
 # AWS S3
-AWS_S3_BUCKET_NAME=your-bucket-name
+AWS_S3_BUCKET=your-bucket-name
 AWS_S3_REGION=us-east-1
 CDN_URL=https://your-cdn-url.com
 

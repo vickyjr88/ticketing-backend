@@ -21,7 +21,7 @@ export class MediaService {
         const s3Config = this.s3Service.getConfig();
         if (!s3Config.isConfigured) {
             throw new BadRequestException(
-                'Media upload is not configured. Please set AWS_S3_BUCKET_NAME in environment variables.'
+                'Media upload is not configured. Please set AWS_S3_BUCKET in environment variables.'
             );
         }
 
