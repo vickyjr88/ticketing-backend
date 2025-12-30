@@ -6,8 +6,11 @@ import {
   Param,
   UseGuards,
   Request,
+  Query,
+  ParseIntPipe,
+  DefaultValuePipe,
 } from '@nestjs/common';
-import { ApiTags, ApiOperation, ApiBearerAuth } from '@nestjs/swagger';
+import { ApiTags, ApiOperation, ApiBearerAuth, ApiQuery } from '@nestjs/swagger';
 import { TicketsService } from './tickets.service';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 
@@ -19,9 +22,15 @@ export class TicketsController {
   @UseGuards(JwtAuthGuard)
   @Get('my-tickets')
   @ApiBearerAuth()
-  @ApiOperation({ summary: 'Get current user tickets' })
-  async getMyTickets(@Request() req) {
-    return this.ticketsService.getUserTickets(req.user.userId);
+  @ApiOperation({ summary: 'Get current user tickets with pagination' })
+  @ApiQuery({ name: 'page', required: false, type: Number })
+  @ApiQuery({ name: 'limit', required: false, type: Number })
+  async getMyTickets(
+    @Request() req,
+    @Query('page', new DefaultValuePipe(1), ParseIntPipe) page: number,
+    @Query('limit', new DefaultValuePipe(20), ParseIntPipe) limit: number,
+  ) {
+    return this.ticketsService.getUserTickets(req.user.userId, page, limit);
   }
 
   @UseGuards(JwtAuthGuard)

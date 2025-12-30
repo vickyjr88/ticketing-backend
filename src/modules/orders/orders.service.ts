@@ -13,6 +13,7 @@ import { CheckoutDto } from './dto/checkout.dto';
 import { AdoptTicketDto } from './dto/adopt-ticket.dto';
 import { ProductsService } from '../products/products.service';
 import { OrderProduct } from '../../entities/order-product.entity';
+import { PaginatedResult, createPaginatedResult } from '../../common/dto/pagination.dto';
 
 @Injectable()
 export class OrdersService {
@@ -189,14 +190,16 @@ export class OrdersService {
   }
 
   /**
-   * Get user orders
+   * Get user orders with pagination
    */
-  async getUserOrders(userId: string): Promise<Order[]> {
-    return this.ordersRepository.find({
+  async getUserOrders(userId: string, page: number = 1, limit: number = 20): Promise<PaginatedResult<Order>> {
+    const [data, total] = await this.ordersRepository.findAndCount({
       where: { user_id: userId },
       relations: ['user', 'tickets', 'tickets.tier', 'tickets.event', 'event'],
       order: { created_at: 'DESC', id: 'DESC' },
+      skip: (page - 1) * limit,
+      take: limit,
     });
+    return createPaginatedResult(data, total, page, limit);
   }
 }
-

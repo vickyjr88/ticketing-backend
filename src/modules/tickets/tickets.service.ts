@@ -10,6 +10,7 @@ import { TicketTier } from '../../entities/ticket-tier.entity';
 import { Order, PaymentProvider, PaymentStatus } from '../../entities/order.entity';
 import { User } from '../../entities/user.entity';
 import { EventsService } from '../events/events.service';
+import { PaginatedResult, createPaginatedResult } from '../../common/dto/pagination.dto';
 import * as QRCode from 'qrcode';
 import { v4 as uuidv4 } from 'uuid';
 
@@ -308,14 +309,17 @@ export class TicketsService {
   }
 
   /**
-   * Get user tickets
+   * Get user tickets with pagination
    */
-  async getUserTickets(userId: string): Promise<Ticket[]> {
-    return this.ticketsRepository.find({
+  async getUserTickets(userId: string, page: number = 1, limit: number = 20): Promise<PaginatedResult<Ticket>> {
+    const [data, total] = await this.ticketsRepository.findAndCount({
       where: { holder_id: userId },
       relations: ['event', 'tier'],
       order: { created_at: 'DESC' },
+      skip: (page - 1) * limit,
+      take: limit,
     });
+    return createPaginatedResult(data, total, page, limit);
   }
 
   /**
