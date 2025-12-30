@@ -37,6 +37,9 @@ export class PromoCode {
     @Column({ nullable: true })
     event_id: string; // Optional: restrict to specific event
 
+    @Column('simple-array', { nullable: true })
+    product_ids: string[]; // Optional: restrict to specific products
+
     @Column({ type: 'int', nullable: true })
     usage_limit: number; // Max total uses (e.g., first 50)
 

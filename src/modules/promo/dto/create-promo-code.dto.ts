@@ -8,6 +8,7 @@ import {
     IsDateString,
     Min,
     MaxLength,
+    IsArray,
 } from 'class-validator';
 import { DiscountType } from '../../../entities/promo-code.entity';
 
@@ -35,6 +36,12 @@ export class CreatePromoCodeDto {
     @IsOptional()
     @IsString()
     event_id?: string;
+
+    @ApiPropertyOptional({ description: 'Restrict to specific products' })
+    @IsOptional()
+    @IsArray()
+    @IsString({ each: true })
+    product_ids?: string[];
 
     @ApiPropertyOptional({ example: 50, description: 'Max total uses' })
     @IsOptional()

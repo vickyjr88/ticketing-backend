@@ -124,6 +124,7 @@ export class PromoService {
         userId: string,
         eventId: string,
         subtotal: number,
+        productIds: string[] = [],
     ): Promise<PromoValidationResult> {
         const normalizedCode = code.toUpperCase().trim();
 
@@ -153,6 +154,14 @@ export class PromoService {
         // Check event restriction
         if (promo.event_id && promo.event_id !== eventId) {
             return { valid: false, error: 'This promo code is not valid for this event' };
+        }
+
+        // Check product restriction
+        if (promo.product_ids && promo.product_ids.length > 0) {
+            const hasEligibleProduct = productIds.some(id => promo.product_ids.includes(id));
+            if (!hasEligibleProduct) {
+                return { valid: false, error: 'This promo code requires specific products in your cart' };
+            }
         }
 
         // Check usage limit

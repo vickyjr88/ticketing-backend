@@ -86,6 +86,7 @@ export class PromoController {
             req.user.id,
             dto.eventId,
             dto.subtotal,
+            dto.productIds,
         );
 
         if (!result.valid) {
