@@ -12,6 +12,7 @@ import { CreateEventDto } from './dto/create-event.dto';
 import { UpdateEventDto } from './dto/update-event.dto';
 import { CreateTierDto } from './dto/create-tier.dto';
 import { UpdateTierDto } from './dto/update-tier.dto';
+import { PaginatedResult, createPaginatedResult } from '../../common/dto/pagination.dto';
 
 @Injectable()
 export class EventsService {
@@ -33,7 +34,7 @@ export class EventsService {
     return this.eventsRepository.save(event);
   }
 
-  async findAll(status?: EventStatus): Promise<Event[]> {
+  async findAll(page: number = 1, limit: number = 20, status?: EventStatus): Promise<PaginatedResult<Event>> {
     const query = this.eventsRepository
       .createQueryBuilder('event')
       .leftJoinAndSelect('event.ticket_tiers', 'tiers')
@@ -43,9 +44,13 @@ export class EventsService {
       query.where('event.status = :status', { status });
     }
 
+    const total = await query.getCount();
+    const skip = (page - 1) * limit;
+    query.skip(skip).take(limit);
+
     const events = await query.getMany();
-    this.logger.log(`findAll(${status || 'all'}): Found ${events.length} events`);
-    return events;
+    this.logger.log(`findAll(page=${page}, limit=${limit}, status=${status || 'all'}): Found ${events.length} of ${total} events`);
+    return createPaginatedResult(events, total, page, limit);
   }
 
   async findByUser(userId: string): Promise<Event[]> {
@@ -60,10 +65,10 @@ export class EventsService {
     return events;
   }
 
-  async findPublished(): Promise<Event[]> {
-    const events = await this.findAll(EventStatus.PUBLISHED);
-    this.logger.log(`findPublished: Found ${events.length} published events`);
-    return events;
+  async findPublished(page: number = 1, limit: number = 20): Promise<PaginatedResult<Event>> {
+    const result = await this.findAll(page, limit, EventStatus.PUBLISHED);
+    this.logger.log(`findPublished: Found ${result.data.length} of ${result.meta.total} published events`);
+    return result;
   }
 
   async findById(id: string): Promise<Event> {
@@ -189,13 +194,19 @@ export class EventsService {
   }
 
   // Admin-only methods
-  async findAllForAdmin(): Promise<Event[]> {
-    return this.eventsRepository
+  async findAllForAdmin(page: number = 1, limit: number = 20): Promise<PaginatedResult<Event>> {
+    const query = this.eventsRepository
       .createQueryBuilder('event')
       .leftJoinAndSelect('event.ticket_tiers', 'tiers')
       .leftJoinAndSelect('event.user', 'user')
-      .orderBy('event.created_at', 'DESC')
-      .getMany();
+      .orderBy('event.created_at', 'DESC');
+
+    const total = await query.getCount();
+    const skip = (page - 1) * limit;
+    query.skip(skip).take(limit);
+
+    const events = await query.getMany();
+    return createPaginatedResult(events, total, page, limit);
   }
 
   async updateStatus(

@@ -10,6 +10,7 @@ import { PromoCode, DiscountType } from '../../entities/promo-code.entity';
 import { PromoCodeUsage } from '../../entities/promo-code-usage.entity';
 import { CreatePromoCodeDto } from './dto/create-promo-code.dto';
 import { UpdatePromoCodeDto } from './dto/update-promo-code.dto';
+import { PaginatedResult, createPaginatedResult } from '../../common/dto/pagination.dto';
 
 export interface PromoValidationResult {
     valid: boolean;
@@ -53,9 +54,9 @@ export class PromoService {
     }
 
     /**
-     * Get all promo codes
+     * Get all promo codes with pagination
      */
-    async findAll(includeInactive = false): Promise<PromoCode[]> {
+    async findAll(page: number = 1, limit: number = 20, includeInactive = false): Promise<PaginatedResult<PromoCode>> {
         const query = this.promoCodeRepository
             .createQueryBuilder('promo')
             .leftJoinAndSelect('promo.event', 'event')
@@ -65,7 +66,10 @@ export class PromoService {
             query.where('promo.is_active = :active', { active: true });
         }
 
-        return query.getMany();
+        const total = await query.getCount();
+        query.skip((page - 1) * limit).take(limit);
+        const data = await query.getMany();
+        return createPaginatedResult(data, total, page, limit);
     }
 
     /**

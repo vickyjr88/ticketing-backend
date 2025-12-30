@@ -3,6 +3,7 @@ import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { Media } from '../../entities/media.entity';
 import { S3Service } from '../../services/s3.service';
+import { PaginatedResult, createPaginatedResult } from '../../common/dto/pagination.dto';
 
 @Injectable()
 export class MediaService {
@@ -12,8 +13,13 @@ export class MediaService {
         private s3Service: S3Service,
     ) { }
 
-    async findAll() {
-        return this.mediaRepository.find({ order: { created_at: 'DESC' } });
+    async findAll(page: number = 1, limit: number = 24): Promise<PaginatedResult<Media>> {
+        const [data, total] = await this.mediaRepository.findAndCount({
+            order: { created_at: 'DESC' },
+            skip: (page - 1) * limit,
+            take: limit,
+        });
+        return createPaginatedResult(data, total, page, limit);
     }
 
     async upload(file: Express.Multer.File) {

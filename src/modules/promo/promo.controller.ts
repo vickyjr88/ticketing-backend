@@ -9,8 +9,10 @@ import {
     Query,
     UseGuards,
     Request,
+    ParseIntPipe,
+    DefaultValuePipe,
 } from '@nestjs/common';
-import { ApiTags, ApiOperation, ApiBearerAuth } from '@nestjs/swagger';
+import { ApiTags, ApiOperation, ApiBearerAuth, ApiQuery } from '@nestjs/swagger';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { AdminGuard } from '../auth/guards/admin.guard';
 import { PromoService } from './promo.service';
@@ -36,9 +38,16 @@ export class PromoController {
     @Get()
     @UseGuards(JwtAuthGuard, AdminGuard)
     @ApiBearerAuth()
-    @ApiOperation({ summary: 'Get all promo codes (Admin only)' })
-    async findAll(@Query('includeInactive') includeInactive?: string) {
-        return this.promoService.findAll(includeInactive === 'true');
+    @ApiOperation({ summary: 'Get all promo codes with pagination (Admin only)' })
+    @ApiQuery({ name: 'page', required: false, type: Number })
+    @ApiQuery({ name: 'limit', required: false, type: Number })
+    @ApiQuery({ name: 'includeInactive', required: false, type: Boolean })
+    async findAll(
+        @Query('page', new DefaultValuePipe(1), ParseIntPipe) page: number,
+        @Query('limit', new DefaultValuePipe(20), ParseIntPipe) limit: number,
+        @Query('includeInactive') includeInactive?: string,
+    ) {
+        return this.promoService.findAll(page, limit, includeInactive === 'true');
     }
 
     @Get(':id')

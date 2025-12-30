@@ -12,6 +12,8 @@ import {
   UseInterceptors,
   UploadedFile,
   BadRequestException,
+  ParseIntPipe,
+  DefaultValuePipe,
 } from '@nestjs/common';
 import { FileInterceptor } from '@nestjs/platform-express';
 import { ApiTags, ApiOperation, ApiBearerAuth, ApiQuery, ApiConsumes } from '@nestjs/swagger';
@@ -34,13 +36,19 @@ export class EventsController {
   ) { }
 
   @Get()
-  @ApiOperation({ summary: 'Get all events' })
+  @ApiOperation({ summary: 'Get all events with pagination' })
   @ApiQuery({ name: 'status', enum: EventStatus, required: false })
-  async findAll(@Query('status') status?: EventStatus) {
+  @ApiQuery({ name: 'page', required: false, type: Number })
+  @ApiQuery({ name: 'limit', required: false, type: Number })
+  async findAll(
+    @Query('page', new DefaultValuePipe(1), ParseIntPipe) page: number,
+    @Query('limit', new DefaultValuePipe(20), ParseIntPipe) limit: number,
+    @Query('status') status?: EventStatus,
+  ) {
     if (status) {
-      return this.eventsService.findAll(status);
+      return this.eventsService.findAll(page, limit, status);
     }
-    return this.eventsService.findPublished();
+    return this.eventsService.findPublished(page, limit);
   }
 
   @UseGuards(JwtAuthGuard)
@@ -51,13 +59,17 @@ export class EventsController {
     return this.eventsService.findByUser(req.user.userId);
   }
 
-  // Admin-only endpoints (must come before :id route)
   @UseGuards(JwtAuthGuard, AdminGuard)
   @Get('admin/all')
   @ApiBearerAuth()
-  @ApiOperation({ summary: 'Get all events (Admin only)' })
-  async findAllForAdmin() {
-    return this.eventsService.findAllForAdmin();
+  @ApiOperation({ summary: 'Get all events with pagination (Admin only)' })
+  @ApiQuery({ name: 'page', required: false, type: Number })
+  @ApiQuery({ name: 'limit', required: false, type: Number })
+  async findAllForAdmin(
+    @Query('page', new DefaultValuePipe(1), ParseIntPipe) page: number,
+    @Query('limit', new DefaultValuePipe(20), ParseIntPipe) limit: number,
+  ) {
+    return this.eventsService.findAllForAdmin(page, limit);
   }
 
   @UseGuards(JwtAuthGuard, AdminGuard)

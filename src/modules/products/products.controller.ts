@@ -1,8 +1,8 @@
-import { Controller, Get, Post, Body, Patch, Param, Delete, UseGuards, Query } from '@nestjs/common';
+import { Controller, Get, Post, Body, Patch, Param, Delete, UseGuards, Query, ParseIntPipe, DefaultValuePipe } from '@nestjs/common';
 import { ProductsService } from './products.service';
 import { CreateProductDto } from './dto/create-product.dto';
 import { UpdateProductDto } from './dto/update-product.dto';
-import { ApiTags, ApiOperation, ApiBearerAuth } from '@nestjs/swagger';
+import { ApiTags, ApiOperation, ApiBearerAuth, ApiQuery } from '@nestjs/swagger';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 
 @ApiTags('products')
@@ -19,12 +19,19 @@ export class ProductsController {
     }
 
     @Get()
-    @ApiOperation({ summary: 'Get products by event ID or all active' })
-    findAll(@Query('eventId') eventId?: string) {
+    @ApiOperation({ summary: 'Get products with pagination' })
+    @ApiQuery({ name: 'eventId', required: false })
+    @ApiQuery({ name: 'page', required: false, type: Number })
+    @ApiQuery({ name: 'limit', required: false, type: Number })
+    findAll(
+        @Query('eventId') eventId?: string,
+        @Query('page', new DefaultValuePipe(1), ParseIntPipe) page?: number,
+        @Query('limit', new DefaultValuePipe(24), ParseIntPipe) limit?: number,
+    ) {
         if (eventId) {
-            return this.productsService.findAllByEvent(eventId);
+            return this.productsService.findAllByEvent(eventId, page, limit);
         }
-        return this.productsService.findAllActive();
+        return this.productsService.findAllActive(page, limit);
     }
 
     @Get(':id')

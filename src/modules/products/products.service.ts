@@ -4,6 +4,7 @@ import { Repository } from 'typeorm';
 import { Product } from '../../entities/product.entity';
 import { CreateProductDto } from './dto/create-product.dto';
 import { UpdateProductDto } from './dto/update-product.dto';
+import { PaginatedResult, createPaginatedResult } from '../../common/dto/pagination.dto';
 
 @Injectable()
 export class ProductsService {
@@ -22,17 +23,23 @@ export class ProductsService {
         return this.productsRepository.save(product);
     }
 
-    async findAllByEvent(eventId: string): Promise<Product[]> {
-        return this.productsRepository.find({
+    async findAllByEvent(eventId: string, page: number = 1, limit: number = 24): Promise<PaginatedResult<Product>> {
+        const [data, total] = await this.productsRepository.findAndCount({
             where: { event_id: eventId, active: true },
+            skip: (page - 1) * limit,
+            take: limit,
         });
+        return createPaginatedResult(data, total, page, limit);
     }
 
-    async findAllActive(): Promise<Product[]> {
-        return this.productsRepository.find({
+    async findAllActive(page: number = 1, limit: number = 24): Promise<PaginatedResult<Product>> {
+        const [data, total] = await this.productsRepository.findAndCount({
             where: { active: true },
             relations: ['event'],
+            skip: (page - 1) * limit,
+            take: limit,
         });
+        return createPaginatedResult(data, total, page, limit);
     }
 
     async findOne(id: string): Promise<Product> {

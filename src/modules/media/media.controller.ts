@@ -1,6 +1,6 @@
-import { Controller, Get, Post, Delete, Param, UseGuards, UseInterceptors, UploadedFile, BadRequestException } from '@nestjs/common';
+import { Controller, Get, Post, Delete, Param, UseGuards, UseInterceptors, UploadedFile, BadRequestException, Query, ParseIntPipe, DefaultValuePipe } from '@nestjs/common';
 import { FileInterceptor } from '@nestjs/platform-express';
-import { ApiTags, ApiOperation, ApiBearerAuth, ApiConsumes } from '@nestjs/swagger';
+import { ApiTags, ApiOperation, ApiBearerAuth, ApiConsumes, ApiQuery } from '@nestjs/swagger';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { AdminGuard } from '../auth/guards/admin.guard';
 import { MediaService } from './media.service';
@@ -13,9 +13,14 @@ export class MediaController {
     constructor(private readonly mediaService: MediaService) { }
 
     @Get()
-    @ApiOperation({ summary: 'Get all media' })
-    findAll() {
-        return this.mediaService.findAll();
+    @ApiOperation({ summary: 'Get all media with pagination' })
+    @ApiQuery({ name: 'page', required: false, type: Number })
+    @ApiQuery({ name: 'limit', required: false, type: Number })
+    findAll(
+        @Query('page', new DefaultValuePipe(1), ParseIntPipe) page: number,
+        @Query('limit', new DefaultValuePipe(24), ParseIntPipe) limit: number,
+    ) {
+        return this.mediaService.findAll(page, limit);
     }
 
     @Post()
