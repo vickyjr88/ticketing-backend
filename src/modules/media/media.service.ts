@@ -1,4 +1,4 @@
-import { Injectable, NotFoundException } from '@nestjs/common';
+import { Injectable, NotFoundException, BadRequestException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { Media } from '../../entities/media.entity';
@@ -17,6 +17,14 @@ export class MediaService {
     }
 
     async upload(file: Express.Multer.File) {
+        // Check if S3 is configured
+        const s3Config = this.s3Service.getConfig();
+        if (!s3Config.isConfigured) {
+            throw new BadRequestException(
+                'Media upload is not configured. Please set AWS_S3_BUCKET_NAME in environment variables.'
+            );
+        }
+
         const uploadResult = await this.s3Service.uploadMedia(file);
 
         const media = this.mediaRepository.create({
