@@ -82,6 +82,7 @@ Don't miss the event everyone will be talking about!`,
         lottery_enabled: true,
         lottery_draw_date: new Date('2025-03-10T12:00:00Z'),
         banner_image_url: 'https://images.unsplash.com/photo-1492684223066-81342ee5ff30',
+        user_id: adminUser.id,
     });
     await eventRepository.save(mainEvent);
     console.log('✅ Created main event: Home Run with Pipita 2025');
@@ -219,6 +220,7 @@ A weekend you will never forget!`,
         status: EventStatus.PUBLISHED,
         lottery_enabled: false,
         banner_image_url: 'https://images.unsplash.com/photo-1533174072545-7a4b6ad7a6c3',
+        user_id: adminUser.id,
     });
     await eventRepository.save(summerJam);
     console.log('✅ Created event: Summer Jam Festival 2025');
@@ -289,6 +291,7 @@ Connect, learn, and innovate!`,
         status: EventStatus.PUBLISHED,
         lottery_enabled: false,
         banner_image_url: 'https://images.unsplash.com/photo-1540575467063-178a50c2df87',
+        user_id: adminUser.id,
     });
     await eventRepository.save(techConf);
     console.log('✅ Created event: Nairobi Tech Summit 2025');
@@ -360,6 +363,7 @@ Every ticket transforms a life!`,
         lottery_enabled: true,
         lottery_draw_date: new Date('2025-04-28T12:00:00Z'),
         banner_image_url: 'https://images.unsplash.com/photo-1511795409834-ef04bbd61622',
+        user_id: adminUser.id,
     });
     await eventRepository.save(charityGala);
     console.log('✅ Created event: Hearts of Hope Charity Gala');
@@ -423,6 +427,7 @@ Every ticket transforms a life!`,
         status: EventStatus.DRAFT, // Not yet published
         lottery_enabled: false,
         banner_image_url: 'https://images.unsplash.com/photo-1467810563316-b5476525c0f9',
+        user_id: adminUser.id,
     });
     await eventRepository.save(upcomingEvent);
     console.log('✅ Created draft event: New Year\'s Eve Spectacular 2026');
