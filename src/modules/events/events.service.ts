@@ -60,7 +60,8 @@ export class EventsService {
       .leftJoinAndSelect('event.ticket_tiers', 'tiers')
       .leftJoin('event.tickets', 'ticket')
       .where('event.user_id = :userId', { userId })
-      .orWhere('ticket.user_id = :userId', { userId })
+      .orWhere('ticket.purchaser_id = :userId', { userId })
+      .orWhere('ticket.holder_id = :userId', { userId })
       .orderBy('event.start_date', 'ASC');
 
     const events = await query.getMany();
