@@ -39,6 +39,7 @@ async function bootstrap() {
     'http://127.0.0.1:5173',
     'http://3.225.246.72:3000',  // Production frontend
     'https://tickets.triklecamp.com/',  // Production frontend
+    'https://tickets.vitaldigitalmedia.net',  // Production frontend
     process.env.FRONTEND_URL,
   ].filter(Boolean);
 
