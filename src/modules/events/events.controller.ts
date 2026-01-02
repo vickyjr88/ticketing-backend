@@ -35,6 +35,12 @@ export class EventsController {
     private s3Service: S3Service,
   ) { }
 
+  @Get('featured')
+  @ApiOperation({ summary: 'Get the featured event' })
+  async getFeaturedEvent() {
+    return this.eventsService.getFeaturedEvent();
+  }
+
   @Get()
   @ApiOperation({ summary: 'Get all events with pagination' })
   @ApiQuery({ name: 'status', enum: EventStatus, required: false })
@@ -92,6 +98,14 @@ export class EventsController {
   async deleteByAdmin(@Param('id') id: string) {
     await this.eventsService.deleteByAdmin(id);
     return { message: 'Event deleted successfully' };
+  }
+
+  @UseGuards(JwtAuthGuard, AdminGuard)
+  @Post(':id/feature')
+  @ApiBearerAuth()
+  @ApiOperation({ summary: 'Feature an event (Admin only)' })
+  async featureEvent(@Param('id') id: string) {
+    return this.eventsService.featureEvent(id);
   }
 
   @Get(':id')

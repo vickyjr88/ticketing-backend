@@ -3,6 +3,7 @@ import {
   NotFoundException,
   BadRequestException,
   Logger,
+  OnModuleInit,
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
@@ -15,7 +16,7 @@ import { UpdateTierDto } from './dto/update-tier.dto';
 import { PaginatedResult, createPaginatedResult } from '../../common/dto/pagination.dto';
 
 @Injectable()
-export class EventsService {
+export class EventsService implements OnModuleInit {
   private readonly logger = new Logger(EventsService.name);
 
   constructor(
@@ -24,6 +25,21 @@ export class EventsService {
     @InjectRepository(TicketTier)
     private tierRepository: Repository<TicketTier>,
   ) { }
+
+  async onModuleInit() {
+    try {
+      const featured = await this.eventsRepository.findOne({ where: { is_featured: true } });
+      if (!featured) {
+        const target = await this.eventsRepository.findOne({ where: { title: 'Home Run with Pipita 2025' } });
+        if (target) {
+          this.logger.log(`Auto-featuring event: ${target.title}`);
+          await this.featureEvent(target.id);
+        }
+      }
+    } catch (error) {
+      this.logger.warn('Failed to auto-feature event on init (DB might not be ready yet): ' + error.message);
+    }
+  }
 
   async create(createEventDto: CreateEventDto, user?: any): Promise<Event> {
     const event = this.eventsRepository.create({
@@ -86,6 +102,23 @@ export class EventsService {
 
   async update(id: string, updateEventDto: UpdateEventDto): Promise<Event> {
     await this.eventsRepository.update(id, updateEventDto);
+    return this.findById(id);
+  }
+
+  async getFeaturedEvent(): Promise<Event | null> {
+    return this.eventsRepository.findOne({
+      where: { is_featured: true, status: EventStatus.PUBLISHED },
+      relations: ['ticket_tiers'],
+    });
+  }
+
+  async featureEvent(id: string): Promise<Event> {
+    const event = await this.findById(id);
+    if (!event) throw new NotFoundException('Event not found');
+
+    await this.eventsRepository.update({ is_featured: true }, { is_featured: false });
+    await this.eventsRepository.update(id, { is_featured: true });
+
     return this.findById(id);
   }
 

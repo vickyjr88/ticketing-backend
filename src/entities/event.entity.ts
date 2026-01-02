@@ -58,6 +58,10 @@ export class Event {
   @Column({ type: 'timestamp', nullable: true })
   lottery_draw_date: Date;
 
+  @Column({ default: false })
+  is_featured: boolean;
+
+
   @CreateDateColumn()
   created_at: Date;
 
