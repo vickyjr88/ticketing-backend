@@ -2,15 +2,37 @@ import { Injectable, BadRequestException, Logger } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import Stripe from 'stripe';
 
+import { PaymentSettingsService } from '../payment-settings.service';
+import { PaymentProvider } from '../../../entities/order.entity';
+
 @Injectable()
 export class StripeService {
   private readonly logger = new Logger(StripeService.name);
-  private stripe: Stripe;
 
-  constructor(private configService: ConfigService) {
-    this.stripe = new Stripe(this.configService.get('STRIPE_SECRET_KEY'), {
-      apiVersion: '2023-10-16',
-    });
+  constructor(
+    private configService: ConfigService,
+    private paymentSettingsService: PaymentSettingsService
+  ) { }
+
+  private async getConfig() {
+    const dbConfig = await this.paymentSettingsService.getConfig(PaymentProvider.STRIPE);
+    let creds: any = {};
+    if (dbConfig) {
+      creds = dbConfig.credentials || {};
+    }
+
+    const secretKey = creds.secretKey || this.configService.get('STRIPE_SECRET_KEY');
+    const webhookSecret = creds.webhookSecret || this.configService.get('STRIPE_WEBHOOK_SECRET');
+    const publishableKey = creds.publishableKey || this.configService.get('STRIPE_PUBLISHABLE_KEY');
+
+    if (!secretKey) throw new BadRequestException('Stripe Secret Key not configured');
+
+    return { secretKey, webhookSecret, publishableKey };
+  }
+
+  private async getClient() {
+    const { secretKey } = await this.getConfig();
+    return new Stripe(secretKey, { apiVersion: '2023-10-16' });
   }
 
   /**
@@ -22,7 +44,8 @@ export class StripeService {
     currency: string = 'usd',
   ): Promise<Stripe.PaymentIntent> {
     try {
-      const paymentIntent = await this.stripe.paymentIntents.create({
+      const stripe = await this.getClient();
+      const paymentIntent = await stripe.paymentIntents.create({
         amount: Math.round(amount * 100), // Stripe expects amount in cents
         currency,
         metadata: {
@@ -51,7 +74,8 @@ export class StripeService {
     cancelUrl: string,
   ): Promise<Stripe.Checkout.Session> {
     try {
-      const session = await this.stripe.checkout.sessions.create({
+      const stripe = await this.getClient();
+      const session = await stripe.checkout.sessions.create({
         payment_method_types: ['card'],
         line_items: [
           {
@@ -83,21 +107,23 @@ export class StripeService {
   }
 
   /**
-   * Verify webhook signature and process webhook events
-   */
-  processWebhook(
+
+  * Verify webhook signature and process webhook events
+  */
+  async processWebhook(
     payload: string | Buffer,
     signature: string,
-  ): {
+  ): Promise<{
     success: boolean;
     orderId: string;
     transactionId: string;
     amount: number;
-  } {
-    const webhookSecret = this.configService.get('STRIPE_WEBHOOK_SECRET');
+  }> {
+    const { webhookSecret } = await this.getConfig();
+    const stripe = await this.getClient();
 
     try {
-      const event = this.stripe.webhooks.constructEvent(
+      const event = stripe.webhooks.constructEvent(
         payload,
         signature,
         webhookSecret,
@@ -150,7 +176,8 @@ export class StripeService {
    */
   async getPaymentIntent(paymentIntentId: string): Promise<Stripe.PaymentIntent> {
     try {
-      return await this.stripe.paymentIntents.retrieve(paymentIntentId);
+      const stripe = await this.getClient();
+      return await stripe.paymentIntents.retrieve(paymentIntentId);
     } catch (error) {
       this.logger.error('Failed to retrieve payment intent', error);
       throw new BadRequestException('Payment not found');
@@ -165,7 +192,8 @@ export class StripeService {
     amount?: number,
   ): Promise<Stripe.Refund> {
     try {
-      const refund = await this.stripe.refunds.create({
+      const stripe = await this.getClient();
+      const refund = await stripe.refunds.create({
         payment_intent: paymentIntentId,
         amount: amount ? Math.round(amount * 100) : undefined,
       });

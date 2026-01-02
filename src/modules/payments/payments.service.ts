@@ -74,19 +74,19 @@ export class PaymentsService {
         if (!successUrl) {
           throw new BadRequestException('Success URL (callback URL) is required for Paystack');
         }
-        
+
         if (!order.user) {
           this.logger.error(`Order ${orderId} has no user relation loaded. user_id: ${order.user_id}`);
           throw new BadRequestException('Unable to load order user information. Please try again.');
         }
-        
+
         if (!order.user.email) {
           this.logger.error(`User ${order.user.id} has no email address`);
           throw new BadRequestException(`User email is required for Paystack payment. Please update your profile with a valid email address.`);
         }
-        
+
         this.logger.log(`Initializing Paystack payment for ${order.user.email}, amount: ${order.total_amount}`);
-        
+
         return this.paystackService.initializeTransaction(
           order.user.email,
           Number(order.total_amount),
@@ -141,7 +141,7 @@ export class PaymentsService {
    * Handle Stripe webhook (idempotent)
    */
   async handleStripeWebhook(payload: string | Buffer, signature: string): Promise<void> {
-    const result = this.stripeService.processWebhook(payload, signature);
+    const result = await this.stripeService.processWebhook(payload, signature);
 
     if (!result) {
       return; // Unhandled event type

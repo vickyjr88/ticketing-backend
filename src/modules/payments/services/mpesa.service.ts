@@ -2,31 +2,72 @@ import { Injectable, BadRequestException, Logger } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import axios from 'axios';
 
+import { PaymentSettingsService } from '../payment-settings.service';
+import { PaymentProvider } from '../../../entities/order.entity';
+
 @Injectable()
 export class MpesaService {
   private readonly logger = new Logger(MpesaService.name);
-  private readonly baseUrl: string;
 
-  constructor(private configService: ConfigService) {
-    const environment = this.configService.get('MPESA_ENVIRONMENT') || 'sandbox';
-    this.baseUrl =
-      environment === 'production'
-        ? 'https://api.safaricom.co.ke'
-        : 'https://sandbox.safaricom.co.ke';
+  constructor(
+    private configService: ConfigService,
+    private paymentSettingsService: PaymentSettingsService
+  ) { }
+
+  private getBaseUrl(isTest: boolean): string {
+    return isTest
+      ? 'https://sandbox.safaricom.co.ke'
+      : 'https://api.safaricom.co.ke';
+  }
+
+  private async getConfig() {
+    const dbConfig = await this.paymentSettingsService.getConfig(PaymentProvider.MPESA);
+    let creds: any = {};
+    let isTest = true;
+
+    // Determine credentials source
+    // If DB config exists, use it. But maintain fallback for individual fields if missing.
+    // E.g. User enabled it but didn't type keys.
+    if (dbConfig) {
+      creds = dbConfig.credentials || {};
+      // If explicitly enabled/disabled in DB, respect the mode. 
+      // If enabled/test mode set, use that.
+      // Note: "is_enabled" check is tricky if service is called. Usually caller checks enabled properly.
+      // Here we just want the VALUES.
+      isTest = dbConfig.is_test_mode;
+    } else {
+      // No DB config row at all -> Pure Env fallback
+      const env = this.configService.get('MPESA_ENVIRONMENT');
+      isTest = env !== 'production';
+    }
+
+    // Merge values (DB > Env)
+    return {
+      consumerKey: creds.consumerKey || this.configService.get('MPESA_CONSUMER_KEY'),
+      consumerSecret: creds.consumerSecret || this.configService.get('MPESA_CONSUMER_SECRET'),
+      passkey: creds.passkey || this.configService.get('MPESA_PASSKEY'),
+      shortcode: creds.shortcode || this.configService.get('MPESA_SHORTCODE'),
+      callbackUrl: this.configService.get('MPESA_CALLBACK_URL'), // Usually static per env
+      baseUrl: this.getBaseUrl(isTest)
+    };
   }
 
   /**
    * Get OAuth access token from Safaricom
    */
   private async getAccessToken(): Promise<string> {
-    const consumerKey = this.configService.get('MPESA_CONSUMER_KEY');
-    const consumerSecret = this.configService.get('MPESA_CONSUMER_SECRET');
+    const config = await this.getConfig();
+    const { consumerKey, consumerSecret, baseUrl } = config;
+
+    if (!consumerKey || !consumerSecret) {
+      throw new BadRequestException('M-Pesa credentials not configured');
+    }
 
     const auth = Buffer.from(`${consumerKey}:${consumerSecret}`).toString('base64');
 
     try {
       const response = await axios.get(
-        `${this.baseUrl}/oauth/v1/generate?grant_type=client_credentials`,
+        `${baseUrl}/oauth/v1/generate?grant_type=client_credentials`,
         {
           headers: {
             Authorization: `Basic ${auth}`,
@@ -44,18 +85,18 @@ export class MpesaService {
   /**
    * Generate password for STK Push
    */
-  private generatePassword(): { password: string; timestamp: string } {
+  private async generatePassword() {
     const timestamp = new Date()
       .toISOString()
       .replace(/[^0-9]/g, '')
       .slice(0, 14);
 
-    const shortcode = this.configService.get('MPESA_SHORTCODE');
-    const passkey = this.configService.get('MPESA_PASSKEY');
+    const config = await this.getConfig();
+    const { shortcode, passkey } = config;
 
     const password = Buffer.from(`${shortcode}${passkey}${timestamp}`).toString('base64');
 
-    return { password, timestamp };
+    return { password, timestamp, config };
   }
 
   /**
@@ -63,28 +104,29 @@ export class MpesaService {
    */
   async stkPush(phoneNumber: string, amount: number, orderId: string): Promise<any> {
     const accessToken = await this.getAccessToken();
-    const { password, timestamp } = this.generatePassword();
+    const { password, timestamp, config } = await this.generatePassword();
+    const { shortcode, callbackUrl, baseUrl } = config;
 
     // Format phone number (remove + and ensure starts with 254)
     const formattedPhone = phoneNumber.replace(/^\+/, '').replace(/^0/, '254');
 
     const payload = {
-      BusinessShortCode: this.configService.get('MPESA_SHORTCODE'),
+      BusinessShortCode: shortcode,
       Password: password,
       Timestamp: timestamp,
       TransactionType: 'CustomerPayBillOnline',
       Amount: Math.round(amount),
       PartyA: formattedPhone,
-      PartyB: this.configService.get('MPESA_SHORTCODE'),
+      PartyB: shortcode,
       PhoneNumber: formattedPhone,
-      CallBackURL: this.configService.get('MPESA_CALLBACK_URL'),
+      CallBackURL: callbackUrl,
       AccountReference: orderId,
       TransactionDesc: `Ticket Purchase - Order ${orderId}`,
     };
 
     try {
       const response = await axios.post(
-        `${this.baseUrl}/mpesa/stkpush/v1/processrequest`,
+        `${baseUrl}/mpesa/stkpush/v1/processrequest`,
         payload,
         {
           headers: {
@@ -158,10 +200,11 @@ export class MpesaService {
    */
   async queryTransaction(checkoutRequestId: string): Promise<any> {
     const accessToken = await this.getAccessToken();
-    const { password, timestamp } = this.generatePassword();
+    const { password, timestamp, config } = await this.generatePassword();
+    const { shortcode, baseUrl } = config;
 
     const payload = {
-      BusinessShortCode: this.configService.get('MPESA_SHORTCODE'),
+      BusinessShortCode: shortcode,
       Password: password,
       Timestamp: timestamp,
       CheckoutRequestID: checkoutRequestId,
@@ -169,7 +212,7 @@ export class MpesaService {
 
     try {
       const response = await axios.post(
-        `${this.baseUrl}/mpesa/stkpushquery/v1/query`,
+        `${baseUrl}/mpesa/stkpushquery/v1/query`,
         payload,
         {
           headers: {
