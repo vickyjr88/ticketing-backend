@@ -16,4 +16,9 @@ export class InitiatePaymentDto {
   @IsOptional()
   @IsUrl()
   cancelUrl?: string;
+
+  @ApiPropertyOptional({ description: 'Payment provider to update (optional)' })
+  @IsOptional()
+  @IsString()
+  paymentProvider?: string;
 }

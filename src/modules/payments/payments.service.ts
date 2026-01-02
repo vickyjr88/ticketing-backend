@@ -31,6 +31,7 @@ export class PaymentsService {
     phoneNumber?: string,
     successUrl?: string,
     cancelUrl?: string,
+    paymentProvider?: string,
   ): Promise<any> {
     const order = await this.ordersRepository.findOne({
       where: { id: orderId },
@@ -43,6 +44,12 @@ export class PaymentsService {
 
     if (order.payment_status === PaymentStatus.PAID) {
       throw new BadRequestException('Order already paid');
+    }
+
+    // Update payment provider if requested
+    if (paymentProvider && Object.values(PaymentProvider).includes(paymentProvider as PaymentProvider)) {
+      order.payment_provider = paymentProvider as PaymentProvider;
+      await this.ordersRepository.save(order);
     }
 
     // Log order details for debugging

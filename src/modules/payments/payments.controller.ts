@@ -35,6 +35,7 @@ export class PaymentsController {
       dto.phoneNumber,
       dto.successUrl,
       dto.cancelUrl,
+      dto.paymentProvider,
     );
   }
 
