@@ -12,6 +12,7 @@ import {
   HttpStatus,
 } from '@nestjs/common';
 import { ApiTags, ApiOperation, ApiBearerAuth, ApiExcludeEndpoint } from '@nestjs/swagger';
+import { PaymentSettingsService } from './payment-settings.service';
 import { PaymentsService } from './payments.service';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { Request } from 'express';
@@ -20,7 +21,17 @@ import { InitiatePaymentDto } from './dto/initiate-payment.dto';
 @ApiTags('payments')
 @Controller('payments')
 export class PaymentsController {
-  constructor(private paymentsService: PaymentsService) { }
+  constructor(
+    private paymentsService: PaymentsService,
+    private settingsService: PaymentSettingsService
+  ) { }
+
+  @Get('config')
+  @ApiOperation({ summary: 'Get public payment configuration (enabled providers)' })
+  async getPaymentConfig() {
+    return this.settingsService.getPublicConfigs();
+  }
+
 
   @UseGuards(JwtAuthGuard)
   @Post('initiate/:orderId')

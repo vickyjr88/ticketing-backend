@@ -52,4 +52,13 @@ export class PaymentSettingsService {
         }
         return config.credentials;
     }
+
+    async getPublicConfigs(): Promise<{ provider: string; is_enabled: boolean; is_test_mode: boolean }[]> {
+        const configs = await this.repo.find();
+        return configs.map(c => ({
+            provider: c.provider,
+            is_enabled: c.is_enabled,
+            is_test_mode: c.is_test_mode
+        }));
+    }
 }
