@@ -170,7 +170,14 @@ export class OrdersService {
       order.paid_at = new Date();
     }
 
-    return this.ordersRepository.save(order);
+    const savedOrder = await this.ordersRepository.save(order);
+
+    // Activate tickets if payment successful
+    if (status === PaymentStatus.PAID) {
+      await this.ticketsService.activateTicketsForOrder(order.id);
+    }
+
+    return savedOrder;
   }
 
   /**

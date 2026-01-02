@@ -19,6 +19,7 @@ export enum TicketType {
 }
 
 export enum TicketStatus {
+  PENDING = 'PENDING', // Reserved but not paid
   ISSUED = 'ISSUED', // Ticket issued to purchaser
   POOL = 'POOL', // In lottery pool (for adopted tickets)
   WON = 'WON', // Won in lottery, assigned to winner

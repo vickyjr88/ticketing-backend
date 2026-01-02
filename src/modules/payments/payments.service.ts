@@ -6,8 +6,7 @@ import { MpesaService } from './services/mpesa.service';
 import { StripeService } from './services/stripe.service';
 import { PaystackService } from './services/paystack.service';
 import { EmailService } from '../email/email.service';
-
-
+import { OrdersService } from '../orders/orders.service';
 
 
 @Injectable()
@@ -21,6 +20,7 @@ export class PaymentsService {
     private stripeService: StripeService,
     private paystackService: PaystackService,
     private emailService: EmailService,
+    private ordersService: OrdersService, // Injected dependency
   ) { }
 
   /**
@@ -107,6 +107,29 @@ export class PaymentsService {
   }
 
   /**
+   * Check payment status
+   */
+  async checkPaymentStatus(orderId: string): Promise<{
+    status: PaymentStatus;
+    paid: boolean;
+  }> {
+    const order = await this.ordersRepository.findOne({
+      where: { id: orderId },
+    });
+
+    if (!order) {
+      throw new BadRequestException('Order not found');
+    }
+
+    return {
+      status: order.payment_status,
+      paid: order.payment_status === PaymentStatus.PAID,
+    };
+  }
+
+  // ... existing code ...
+
+  /**
    * Handle M-Pesa callback (idempotent)
    */
   async handleMpesaCallback(callbackData: any): Promise<void> {
@@ -114,7 +137,6 @@ export class PaymentsService {
 
     if (result.success) {
       // Find order by transaction reference
-      // Note: You may need to store checkoutRequestId in order metadata
       const order = await this.ordersRepository.findOne({
         where: { provider_ref: result.orderId },
       });
@@ -130,13 +152,13 @@ export class PaymentsService {
         return;
       }
 
-      // Update order
-      order.payment_status = PaymentStatus.PAID;
-      order.provider_ref = result.transactionId;
-      order.paid_at = new Date();
-      order.payment_metadata = callbackData;
-
-      await this.ordersRepository.save(order);
+      // Update order via service to trigger ticket activation
+      await this.ordersService.updatePaymentStatus(
+        order.id,
+        PaymentStatus.PAID,
+        result.transactionId,
+        callbackData
+      );
       this.logger.log(`Order ${order.id} marked as paid via M-Pesa`);
 
       // Send order confirmation email
@@ -169,18 +191,22 @@ export class PaymentsService {
       return;
     }
 
-    // Update order
+    // Update order via service to trigger ticket activation
     if (result.success) {
-      order.payment_status = PaymentStatus.PAID;
-      order.provider_ref = result.transactionId;
-      order.paid_at = new Date();
+      await this.ordersService.updatePaymentStatus(
+        order.id,
+        PaymentStatus.PAID,
+        result.transactionId
+      );
     } else {
-      order.payment_status = PaymentStatus.FAILED;
+      await this.ordersService.updatePaymentStatus(
+        order.id,
+        PaymentStatus.FAILED
+      );
     }
 
-    await this.ordersRepository.save(order);
     this.logger.log(
-      `Order ${order.id} payment status updated to ${order.payment_status}`,
+      `Order ${order.id} payment status updated to ${result.success ? 'PAID' : 'FAILED'}`,
     );
 
     // Send order confirmation email on success
@@ -189,26 +215,7 @@ export class PaymentsService {
     }
   }
 
-  /**
-   * Check payment status
-   */
-  async checkPaymentStatus(orderId: string): Promise<{
-    status: PaymentStatus;
-    paid: boolean;
-  }> {
-    const order = await this.ordersRepository.findOne({
-      where: { id: orderId },
-    });
-
-    if (!order) {
-      throw new BadRequestException('Order not found');
-    }
-
-    return {
-      status: order.payment_status,
-      paid: order.payment_status === PaymentStatus.PAID,
-    };
-  }
+  // ... existing code ...
 
   /**
    * Verify Paystack transaction
@@ -222,11 +229,13 @@ export class PaymentsService {
 
       if (order) {
         if (order.payment_status !== PaymentStatus.PAID) {
-          order.payment_status = PaymentStatus.PAID;
-          order.provider_ref = result.data.reference;
-          order.paid_at = new Date();
-          order.payment_metadata = result.data;
-          await this.ordersRepository.save(order);
+          // Update order via service to trigger ticket activation
+          await this.ordersService.updatePaymentStatus(
+            order.id,
+            PaymentStatus.PAID,
+            result.data.reference,
+            result.data
+          );
           this.logger.log(`Order ${order.id} marked as paid via Paystack`);
 
           // Send order confirmation email
@@ -271,13 +280,15 @@ export class PaymentsService {
           return;
         }
 
-        // Update order
-        order.payment_status = PaymentStatus.PAID;
-        order.provider_ref = data.reference;
-        order.paid_at = new Date();
-        order.payment_metadata = data;
+        // Update order via service to trigger ticket activation
+        await this.ordersService.updatePaymentStatus(
+          order.id,
+          PaymentStatus.PAID,
+          data.reference,
+          data
+        );
 
-        await this.ordersRepository.save(order);
+
         this.logger.log(`Order ${order.id} marked as paid via Paystack webhook`);
 
         // Send order confirmation email

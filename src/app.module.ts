@@ -19,6 +19,7 @@ import { AnalyticsModule } from './modules/analytics/analytics.module';
 import { EmailModule } from './modules/email/email.module';
 import { ProductsModule } from './modules/products/products.module';
 import { MediaModule } from './modules/media/media.module';
+import { CronService } from './modules/cron/cron/cron.service';
 
 @Module({
     imports: [
@@ -67,5 +68,6 @@ import { MediaModule } from './modules/media/media.module';
         ProductsModule,
         MediaModule,
     ],
+    providers: [CronService],
 })
 export class AppModule { }

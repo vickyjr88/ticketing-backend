@@ -126,7 +126,7 @@ export class TicketsService {
             purchaser_id: userId,
             holder_id: userId,
             type: TicketType.STANDARD,
-            status: TicketStatus.ISSUED,
+            status: TicketStatus.PENDING, // Changed from ISSUED -> PENDING
             qr_code_hash: uuidv4(),
           });
         }
@@ -211,7 +211,8 @@ export class TicketsService {
       });
       const savedOrder = await manager.save(Order, order);
 
-      // Create tickets for pool (ADOPTED type, POOL status)
+      // Create tickets for pool (ADOPTED type, PENDING status)
+      // Note: Adopted tickets are initially PENDING until paid, then become POOL
       const totalTickets = quantity * tier.tickets_per_unit;
       const tickets: Partial<Ticket>[] = [];
       for (let i = 0; i < totalTickets; i++) {
@@ -219,9 +220,9 @@ export class TicketsService {
           event_id: eventId,
           tier_id: tier.id,
           purchaser_id: userId,
-          holder_id: null, // No holder yet
+          holder_id: null,
           type: TicketType.ADOPTED,
-          status: TicketStatus.POOL,
+          status: TicketStatus.PENDING, // Wait for payment before moving to POOL
           qr_code_hash: uuidv4(),
           order_id: savedOrder.id,
         });
@@ -234,6 +235,27 @@ export class TicketsService {
 
       return { order: savedOrder, tickets: savedTickets };
     });
+  }
+
+  /**
+   * Activate tickets for a paid order
+   */
+  async activateTicketsForOrder(orderId: string): Promise<void> {
+    const tickets = await this.ticketsRepository.find({
+      where: { order_id: orderId, status: TicketStatus.PENDING },
+    });
+
+    if (tickets.length === 0) return;
+
+    for (const ticket of tickets) {
+      if (ticket.type === TicketType.ADOPTED) {
+        ticket.status = TicketStatus.POOL; // Move to lottery pool
+      } else {
+        ticket.status = TicketStatus.ISSUED; // Activate standard ticket
+      }
+    }
+
+    await this.ticketsRepository.save(tickets);
   }
 
   /**
@@ -271,12 +293,20 @@ export class TicketsService {
       throw new NotFoundException('Invalid ticket');
     }
 
+    if (ticket.status === TicketStatus.PENDING) {
+      throw new BadRequestException('Ticket not paid. Please complete payment.');
+    }
+
     if (ticket.status === TicketStatus.REDEEMED) {
       throw new BadRequestException('Ticket already redeemed');
     }
 
     if (ticket.status === TicketStatus.CANCELLED) {
       throw new BadRequestException('Ticket is cancelled');
+    }
+
+    if (ticket.status === TicketStatus.POOL) {
+      throw new BadRequestException('This ticket is in the lottery pool and hasn\'t been won yet.');
     }
 
     // Fetch scanner to get assigned gate
@@ -441,7 +471,7 @@ export class TicketsService {
 
     // Verify status
     if (ticket.status !== TicketStatus.ISSUED && ticket.status !== TicketStatus.WON) {
-      throw new BadRequestException('Ticket cannot be transferred (already used or cancelled)');
+      throw new BadRequestException('Ticket cannot be transferred (already used, pending or cancelled)');
     }
 
     // Find recipient (case-insensitive)
