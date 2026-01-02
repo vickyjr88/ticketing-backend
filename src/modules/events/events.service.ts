@@ -52,7 +52,8 @@ export class EventsService implements OnModuleInit {
   async findAll(page: number = 1, limit: number = 20, status?: EventStatus): Promise<PaginatedResult<Event>> {
     const query = this.eventsRepository
       .createQueryBuilder('event')
-      .leftJoinAndSelect('event.ticket_tiers', 'tiers')
+      .leftJoinAndSelect('event.ticket_tiers', 'tiers', 'tiers.is_active = :isActive', { isActive: true })
+      .leftJoinAndSelect('event.products', 'products')
       .orderBy('event.start_date', 'ASC');
 
     if (status) {
@@ -72,7 +73,7 @@ export class EventsService implements OnModuleInit {
     this.logger.debug(`Finding events for user: ${userId}`);
     const query = this.eventsRepository
       .createQueryBuilder('event')
-      .leftJoinAndSelect('event.ticket_tiers', 'tiers')
+      .leftJoinAndSelect('event.ticket_tiers', 'tiers', 'tiers.is_active = :isActive', { isActive: true })
       .where('event.user_id = :userId', { userId })
       .orderBy('event.start_date', 'ASC');
 
@@ -88,10 +89,12 @@ export class EventsService implements OnModuleInit {
   }
 
   async findById(id: string): Promise<Event> {
-    const event = await this.eventsRepository.findOne({
-      where: { id },
-      relations: ['ticket_tiers', 'products'],
-    });
+    const event = await this.eventsRepository
+      .createQueryBuilder('event')
+      .leftJoinAndSelect('event.ticket_tiers', 'tiers', 'tiers.is_active = :isActive', { isActive: true })
+      .leftJoinAndSelect('event.products', 'products')
+      .where('event.id = :id', { id })
+      .getOne();
 
     if (!event) {
       throw new NotFoundException('Event not found');
@@ -106,10 +109,13 @@ export class EventsService implements OnModuleInit {
   }
 
   async getFeaturedEvent(): Promise<Event | null> {
-    return this.eventsRepository.findOne({
-      where: { is_featured: true, status: EventStatus.PUBLISHED },
-      relations: ['ticket_tiers'],
-    });
+    return this.eventsRepository
+      .createQueryBuilder('event')
+      .leftJoinAndSelect('event.ticket_tiers', 'tiers', 'tiers.is_active = :isActive', { isActive: true })
+      .leftJoinAndSelect('event.products', 'products')
+      .where('event.is_featured = :isFeatured', { isFeatured: true })
+      .andWhere('event.status = :status', { status: EventStatus.PUBLISHED })
+      .getOne();
   }
 
   async featureEvent(id: string): Promise<Event> {
@@ -230,7 +236,7 @@ export class EventsService implements OnModuleInit {
   async findAllForAdmin(page: number = 1, limit: number = 20): Promise<PaginatedResult<Event>> {
     const query = this.eventsRepository
       .createQueryBuilder('event')
-      .leftJoinAndSelect('event.ticket_tiers', 'tiers')
+      .leftJoinAndSelect('event.ticket_tiers', 'tiers', 'tiers.is_active = :isActive', { isActive: true })
       .leftJoinAndSelect('event.user', 'user')
       .orderBy('event.created_at', 'DESC');
 
