@@ -76,7 +76,7 @@ interface EventReminderData {
 export class EmailService {
   private readonly logger = new Logger(EmailService.name);
   private readonly apiInstance: Brevo.TransactionalEmailsApi;
-  private readonly senderEmail = 'tickets@pipita.co.ke';
+  private readonly senderEmail = 'triklecamp@gmail.com';
   private readonly senderName = 'Pipita Tickets';
 
   constructor() {
