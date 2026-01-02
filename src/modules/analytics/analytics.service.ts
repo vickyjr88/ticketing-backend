@@ -255,7 +255,7 @@ export class AnalyticsService {
             where: { payment_status: PaymentStatus.PAID },
             relations: ['user', 'event'],
             order: { created_at: 'DESC' },
-            take: 15,
+            take: limit,
         });
 
         recentOrders.forEach(order => {
@@ -272,7 +272,7 @@ export class AnalyticsService {
             where: { status: TicketStatus.REDEEMED },
             relations: ['holder', 'event'],
             order: { checked_in_at: 'DESC' },
-            take: 15,
+            take: limit,
         });
 
         recentCheckIns.forEach(ticket => {
@@ -291,7 +291,7 @@ export class AnalyticsService {
             where: { is_winner: true },
             relations: ['user', 'event'],
             order: { created_at: 'DESC' },
-            take: 10,
+            take: limit,
         });
 
         recentWinners.forEach(entry => {
@@ -307,7 +307,7 @@ export class AnalyticsService {
         const recentWaitlist = await this.waitlistRepository.find({
             relations: ['event', 'tier'],
             order: { created_at: 'DESC' },
-            take: 10,
+            take: limit,
         });
 
         recentWaitlist.forEach(wl => {
