@@ -53,9 +53,9 @@ export class PaystackService {
                 };
             }
 
-            // Get currency from config or default to NGN (Nigerian Naira)
-            // Paystack supports: NGN, GHS, ZAR, USD
-            const currency = this.configService.get('PAYSTACK_CURRENCY') || 'NGN';
+            // Get currency from config or default to KES (Kenyan Shillings)
+            // Paystack supports: NGN, GHS, ZAR, KES, USD
+            const currency = this.configService.get('PAYSTACK_CURRENCY') || 'KES';
             
             // Paystack expects amount in kobo/cents (multiply by 100)
             const payload = {
