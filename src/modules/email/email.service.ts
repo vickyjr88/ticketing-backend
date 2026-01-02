@@ -78,6 +78,7 @@ export class EmailService {
   private readonly apiInstance: Brevo.TransactionalEmailsApi;
   private readonly senderEmail = 'triklecamp@gmail.com';
   private readonly senderName = 'Pipita Tickets';
+  private readonly baseDomain = 'https://tickets.vitaldigitalmedia.net';
 
   constructor() {
     const apiKey = process.env.BREVO_API_KEY;
@@ -438,7 +439,7 @@ export class EmailService {
         <p>Your tickets are ready! You can view them in the Pipita app or website.</p>
         
         <center>
-          <a href="https://pipita.co.ke/my-tickets" class="button">View My Tickets</a>
+          <a href="${this.baseDomain}/my-tickets" class="button">View My Tickets</a>
         </center>
         
         <p style="margin-top: 24px; font-size: 14px; color: #64748b;">
@@ -516,7 +517,7 @@ export class EmailService {
         <p>Your tickets have been added to your account. View them anytime in the app!</p>
         
         <center>
-          <a href="https://pipita.co.ke/my-tickets" class="button">View My Tickets</a>
+          <a href="${this.baseDomain}/my-tickets" class="button">View My Tickets</a>
         </center>
       </div>
     `;
@@ -543,7 +544,7 @@ export class EmailService {
         </ul>
         
         <center>
-          <a href="https://pipita.co.ke/events" class="button">Browse Upcoming Events</a>
+          <a href="${this.baseDomain}/events" class="button">Browse Upcoming Events</a>
         </center>
       </div>
     `;
@@ -608,7 +609,7 @@ export class EmailService {
         <p>Don't miss out – purchase your tickets now before they sell out again!</p>
         
         <center>
-          <a href="${data.purchaseUrl || 'https://pipita.co.ke/events'}" class="button" style="background: linear-gradient(135deg, #ef4444 0%, #dc2626 100%);">
+          <a href="${data.purchaseUrl || '${this.baseDomain}/events'}" class="button" style="background: linear-gradient(135deg, #ef4444 0%, #dc2626 100%);">
             Buy Tickets Now →
           </a>
         </center>
@@ -680,7 +681,7 @@ export class EmailService {
         <p>Your ticket is ready! View it in the app or website.</p>
         
         <center>
-          <a href="https://pipita.co.ke/my-tickets" class="button">View My Tickets</a>
+          <a href="${this.baseDomain}/my-tickets" class="button">View My Tickets</a>
         </center>
       </div>
     `;
@@ -723,7 +724,7 @@ export class EmailService {
         </ul>
         
         <center>
-          <a href="https://pipita.co.ke/my-tickets" class="button">View My Tickets</a>
+          <a href="${this.baseDomain}/my-tickets" class="button">View My Tickets</a>
         </center>
         
         <p style="margin-top: 24px; text-align: center;">See you there! 🎉</p>
@@ -751,7 +752,7 @@ export class EmailService {
         </ul>
         
         <center>
-          <a href="https://pipita.co.ke/events" class="button">Explore Events</a>
+          <a href="${this.baseDomain}/events" class="button">Explore Events</a>
         </center>
         
         <p style="margin-top: 24px; font-size: 14px; color: #64748b;">
@@ -764,7 +765,7 @@ export class EmailService {
 
   private generatePasswordResetHtml(name: string, token: string): string {
     // In a real app, this would link to the frontend reset password page
-    const resetUrl = `https://pipita.co.ke/auth/reset-password?token=${token}`;
+    const resetUrl = `${this.baseDomain}/auth/reset-password?token=${token}`;
 
     const content = `
       <div class="header">

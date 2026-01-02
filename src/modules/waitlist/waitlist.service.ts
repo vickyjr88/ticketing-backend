@@ -92,7 +92,7 @@ export class WaitlistService {
                 customerEmail: entry.email,
                 eventTitle: event.title,
                 tierName: tier.name,
-                purchaseUrl: `https://pipita.co.ke/events/${eventId}`,
+                purchaseUrl: `https://tickets.vitaldigitalmedia.net/events/${eventId}`,
             });
 
             if (sent) {
