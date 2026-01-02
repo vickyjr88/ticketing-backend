@@ -21,6 +21,11 @@ import { ProductsModule } from './modules/products/products.module';
 import { MediaModule } from './modules/media/media.module';
 import { CronService } from './modules/cron/cron/cron.service';
 
+// Entities for CronService
+import { Order } from './entities/order.entity';
+import { Ticket } from './entities/ticket.entity';
+import { TicketTier } from './entities/ticket-tier.entity';
+
 @Module({
     imports: [
         // Configuration
@@ -51,6 +56,9 @@ import { CronService } from './modules/cron/cron/cron.service';
 
         // Scheduler for lottery draws
         ScheduleModule.forRoot(),
+
+        // TypeORM entities for CronService
+        TypeOrmModule.forFeature([Order, Ticket, TicketTier]),
 
         // Feature modules
         AuthModule,
