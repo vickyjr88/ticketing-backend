@@ -1,23 +1,29 @@
 import { Injectable, BadRequestException, Logger } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import axios from 'axios';
+import { PaymentSettingsService } from '../payment-settings.service';
+import { PaymentProvider } from '../../../entities/order.entity';
 
 @Injectable()
 export class PaystackService {
     private readonly logger = new Logger(PaystackService.name);
     private readonly baseUrl = 'https://api.paystack.co';
 
-    constructor(private configService: ConfigService) {
-        const apiKey = this.configService.get('PAYSTACK_SECRET_KEY');
-        if (!apiKey) {
-            this.logger.error('PAYSTACK_SECRET_KEY is not configured');
-        } else {
-            this.logger.log('Paystack service initialized with key: ' + apiKey.substring(0, 10) + '...');
-        }
+    constructor(
+        private configService: ConfigService,
+        private paymentSettingsService: PaymentSettingsService,
+    ) {
+        // Validation moved to runtime to support dynamic config
     }
 
-    private getHeaders() {
-        const apiKey = this.configService.get('PAYSTACK_SECRET_KEY');
+    private async getApiKey(): Promise<string> {
+        const creds = await this.paymentSettingsService.getEffectiveCredentials(PaymentProvider.PAYSTACK);
+        if (creds && creds.secretKey) return creds.secretKey;
+        return this.configService.get('PAYSTACK_SECRET_KEY');
+    }
+
+    private async getHeaders() {
+        const apiKey = await this.getApiKey();
         if (!apiKey) {
             throw new BadRequestException('Paystack API key is not configured');
         }
@@ -37,8 +43,8 @@ export class PaystackService {
         callbackUrl?: string,
     ): Promise<any> {
         try {
-            const apiKey = this.configService.get('PAYSTACK_SECRET_KEY');
-            
+            const apiKey = await this.getApiKey();
+
             // Handle dummy/development key
             if (apiKey === 'dummy-key-for-development') {
                 this.logger.log('Using dummy Paystack key - returning mock response');
@@ -56,7 +62,7 @@ export class PaystackService {
             // Get currency from config or default to KES (Kenyan Shillings)
             // Paystack supports: NGN, GHS, ZAR, KES, USD
             const currency = this.configService.get('PAYSTACK_CURRENCY') || 'KES';
-            
+
             // Paystack expects amount in kobo/cents (multiply by 100)
             const payload = {
                 email,
@@ -75,7 +81,7 @@ export class PaystackService {
                 `${this.baseUrl}/transaction/initialize`,
                 payload,
                 {
-                    headers: this.getHeaders(),
+                    headers: await this.getHeaders(),
                 },
             );
 
@@ -94,8 +100,8 @@ export class PaystackService {
      */
     async verifyTransaction(reference: string): Promise<any> {
         try {
-            const apiKey = this.configService.get('PAYSTACK_SECRET_KEY');
-            
+            const apiKey = await this.getApiKey();
+
             // Handle dummy/development key
             if (apiKey === 'dummy-key-for-development') {
                 this.logger.log('Using dummy Paystack key - returning mock verification');
@@ -133,7 +139,7 @@ export class PaystackService {
             const response = await axios.get(
                 `${this.baseUrl}/transaction/verify/${reference}`,
                 {
-                    headers: this.getHeaders(),
+                    headers: await this.getHeaders(),
                 },
             );
 
