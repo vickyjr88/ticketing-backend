@@ -3,6 +3,7 @@ import {
   BadRequestException,
   NotFoundException,
   ConflictException,
+  ForbiddenException,
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository, DataSource } from 'typeorm';
@@ -108,6 +109,26 @@ export class LotteryService {
     await this.lotteryRepository.remove(entry);
 
     return { message: 'Successfully opted out of the lottery' };
+  }
+
+  /**
+   * Remove a lottery entry (Admin or Event Creator)
+   */
+  async removeEntry(id: string, requesterId: string, isAdmin: boolean): Promise<void> {
+    const entry = await this.lotteryRepository.findOne({ where: { id } });
+    if (!entry) {
+      throw new NotFoundException('Lottery entry not found');
+    }
+
+    if (!isAdmin) {
+      // Check event ownership
+      const event = await this.eventsRepository.findOne({ where: { id: entry.event_id } });
+      if (!event || event.user_id !== requesterId) {
+        throw new ForbiddenException('You can only remove entries from your own events');
+      }
+    }
+
+    await this.lotteryRepository.remove(entry);
   }
 
   /**

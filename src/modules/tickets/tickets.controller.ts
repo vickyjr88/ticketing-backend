@@ -13,6 +13,7 @@ import {
 import { ApiTags, ApiOperation, ApiBearerAuth, ApiQuery } from '@nestjs/swagger';
 import { TicketsService } from './tickets.service';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
+import { AdminGuard } from '../auth/guards/admin.guard';
 
 @ApiTags('tickets')
 @Controller('tickets')
@@ -79,5 +80,22 @@ export class TicketsController {
   @ApiOperation({ summary: 'Get gate ingress stats (Admin/Scanner)' })
   async getGateStats(@Param('eventId') eventId: string) {
     return this.ticketsService.getGateStats(eventId);
+  }
+
+  @UseGuards(JwtAuthGuard, AdminGuard)
+  @Post('issue-complimentary')
+  @ApiBearerAuth()
+  @ApiOperation({ summary: 'Issue complimentary tickets (Admin only)' })
+  async issueComplimentary(
+    @Body() body: { eventId: string; tierId: string; email: string; quantity: number },
+    @Request() req,
+  ) {
+    return this.ticketsService.issueComplimentaryTickets(
+      req.user.userId,
+      body.eventId,
+      body.tierId,
+      body.email,
+      body.quantity,
+    );
   }
 }

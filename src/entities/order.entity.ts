@@ -27,6 +27,7 @@ export enum PaymentProvider {
   STRIPE = 'STRIPE',
   PAYPAL = 'PAYPAL',
   PAYSTACK = 'PAYSTACK',
+  COMPLIMENTARY = 'COMPLIMENTARY',
 }
 
 @Entity('orders')

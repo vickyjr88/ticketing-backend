@@ -311,6 +311,85 @@ export class TicketsService {
   /**
    * Get user tickets with pagination
    */
+  async issueComplimentaryTickets(
+    issuerId: string,
+    eventId: string,
+    tierId: string,
+    recipientEmail: string,
+    quantity: number = 1,
+  ): Promise<{ order: Order; tickets: Ticket[] }> {
+    return await this.dataSource.transaction(async (manager) => {
+      // 1. Validate Event
+      const event = await this.eventsService.findById(eventId);
+      if (!event) {
+        throw new NotFoundException(`Event ${eventId} not found`);
+      }
+
+      // 2. Validate Tier & Lock
+      const tier = await manager
+        .createQueryBuilder(TicketTier, 'tier')
+        .setLock('pessimistic_write')
+        .where('tier.id = :id', { id: tierId })
+        .getOne();
+
+      if (!tier) {
+        throw new NotFoundException(`Ticket tier ${tierId} not found`);
+      }
+      if (tier.event_id !== eventId) {
+        throw new BadRequestException(`Tier does not belong to event`);
+      }
+      if (tier.remaining_quantity < quantity) {
+        throw new BadRequestException(`Not enough tickets available. Remaining: ${tier.remaining_quantity}`);
+      }
+
+      // 3. Find User
+      const user = await manager.findOne(User, { where: { email: recipientEmail } });
+      if (!user) {
+        throw new NotFoundException(`User with email ${recipientEmail} not found. They must register first.`);
+      }
+
+      // 4. Create Order
+      const order = manager.create(Order, {
+        user_id: user.id,
+        user: user,
+        event_id: eventId,
+        event: event,
+        total_amount: 0,
+        payment_status: PaymentStatus.PAID,
+        payment_provider: PaymentProvider.COMPLIMENTARY,
+        payment_metadata: {
+          issuer_id: issuerId,
+          type: 'COMPLIMENTARY',
+        }
+      });
+      const savedOrder = await manager.save(Order, order);
+
+      // 5. Create Tickets
+      const tickets: Ticket[] = [];
+      for (let i = 0; i < quantity; i++) {
+        const uniqueHash = `TKT-${uuidv4().substring(0, 8).toUpperCase()}`;
+        const ticket = manager.create(Ticket, {
+          event_id: eventId,
+          tier_id: tierId,
+          order_id: savedOrder.id,
+          purchaser_id: user.id,
+          holder_id: user.id,
+          type: TicketType.STANDARD,
+          status: TicketStatus.ISSUED,
+          qr_code_hash: uniqueHash,
+        });
+        tickets.push(ticket);
+      }
+      const savedTickets = await manager.save(Ticket, tickets);
+
+      // 6. Update Inventory
+      tier.remaining_quantity -= quantity;
+      await manager.save(TicketTier, tier);
+
+      return { order: savedOrder, tickets: savedTickets };
+    });
+  }
+
   async getUserTickets(userId: string, page: number = 1, limit: number = 20): Promise<PaginatedResult<Ticket>> {
     const [data, total] = await this.ticketsRepository.findAndCount({
       where: { holder_id: userId },

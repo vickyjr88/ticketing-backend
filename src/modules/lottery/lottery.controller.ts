@@ -39,6 +39,16 @@ export class LotteryController {
     return this.lotteryService.optOutOfLottery(req.user.userId, eventId);
   }
 
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles(UserRole.ADMIN, UserRole.USER)
+  @Delete('entry/:id')
+  @ApiBearerAuth()
+  @ApiOperation({ summary: 'Remove a lottery entry (Admin or Creator)' })
+  async removeEntry(@Param('id') id: string, @Request() req) {
+    const isAdmin = req.user.role === UserRole.ADMIN;
+    return this.lotteryService.removeEntry(id, req.user.userId, isAdmin);
+  }
+
   @UseGuards(JwtAuthGuard)
   @Post('draw/:eventId')
   @ApiBearerAuth()

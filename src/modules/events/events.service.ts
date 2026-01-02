@@ -28,8 +28,7 @@ export class EventsService {
   async create(createEventDto: CreateEventDto, user?: any): Promise<Event> {
     const event = this.eventsRepository.create({
       ...createEventDto,
-      user,
-      ...(user?.userId && { user_id: user.userId })
+      user_id: user?.userId,
     });
     return this.eventsRepository.save(event);
   }
@@ -152,13 +151,32 @@ export class EventsService {
   }
 
   async updateTier(tierId: string, updateTierDto: UpdateTierDto): Promise<TicketTier> {
+    const existingTier = await this.getTierById(tierId);
+
+    // Create update object
     const updateData: Partial<TicketTier> = { ...updateTierDto } as unknown as Partial<TicketTier>;
 
+    // Handle Dates
     if (updateTierDto.sales_start) {
       updateData.sales_start = new Date(updateTierDto.sales_start);
     }
     if (updateTierDto.sales_end) {
       updateData.sales_end = new Date(updateTierDto.sales_end);
+    }
+
+    // Handle Quantity Update
+    if (updateTierDto.initial_quantity !== undefined && updateTierDto.initial_quantity !== existingTier.initial_quantity) {
+      const soldCount = existingTier.initial_quantity - existingTier.remaining_quantity;
+
+      if (updateTierDto.initial_quantity < soldCount) {
+        throw new BadRequestException(
+          `Cannot reduce quantity to ${updateTierDto.initial_quantity}. ${soldCount} tickets already sold/reserved.`
+        );
+      }
+
+      // Adjust remaining quantity based on the new initial quantity
+      // newRemaining = newInitial - sold
+      updateData.remaining_quantity = updateTierDto.initial_quantity - soldCount;
     }
 
     await this.tierRepository.update(tierId, updateData);
