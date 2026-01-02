@@ -19,6 +19,8 @@ import { AnalyticsModule } from './modules/analytics/analytics.module';
 import { EmailModule } from './modules/email/email.module';
 import { ProductsModule } from './modules/products/products.module';
 import { MediaModule } from './modules/media/media.module';
+import { GatesModule } from './modules/gates/gates.module';
+import { ContactModule } from './modules/contact/contact.module';
 import { CronService } from './modules/cron/cron/cron.service';
 
 // Entities for CronService
@@ -75,6 +77,8 @@ import { TicketTier } from './entities/ticket-tier.entity';
         EmailModule,
         ProductsModule,
         MediaModule,
+        GatesModule,
+        ContactModule,
     ],
     providers: [CronService],
 })
