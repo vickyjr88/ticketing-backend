@@ -20,6 +20,8 @@ import { AdminGuard } from '../auth/guards/admin.guard';
 export class TicketsController {
   constructor(private ticketsService: TicketsService) { }
 
+  // --- SPECIFIC ROUTES FIRST (before :id) ---
+
   @UseGuards(JwtAuthGuard)
   @Get('my-tickets')
   @ApiBearerAuth()
@@ -33,6 +35,52 @@ export class TicketsController {
   ) {
     return this.ticketsService.getUserTickets(req.user.userId, page, limit);
   }
+
+  @UseGuards(JwtAuthGuard)
+  @Get('scanner/stats')
+  @ApiBearerAuth()
+  @ApiOperation({ summary: 'Get global scanner stats (all events)' })
+  async getGlobalScannerStats() {
+    return this.ticketsService.getGlobalScannerStats();
+  }
+
+  @UseGuards(JwtAuthGuard)
+  @Get('scanner/stats/:eventId')
+  @ApiBearerAuth()
+  @ApiOperation({ summary: 'Get gate ingress stats for an event (Admin/Scanner)' })
+  async getGateStats(@Param('eventId') eventId: string) {
+    return this.ticketsService.getGateStats(eventId);
+  }
+
+  @UseGuards(JwtAuthGuard)
+  @Post('check-in')
+  @ApiBearerAuth()
+  @ApiOperation({ summary: 'Check-in a ticket (Scanner only)' })
+  async checkIn(
+    @Body('qrHash') qrHash: string,
+    @Request() req,
+  ) {
+    return this.ticketsService.checkIn(qrHash, req.user.userId);
+  }
+
+  @UseGuards(JwtAuthGuard, AdminGuard)
+  @Post('issue-complimentary')
+  @ApiBearerAuth()
+  @ApiOperation({ summary: 'Issue complimentary tickets (Admin only)' })
+  async issueComplimentary(
+    @Body() body: { eventId: string; tierId: string; email: string; quantity: number },
+    @Request() req,
+  ) {
+    return this.ticketsService.issueComplimentaryTickets(
+      req.user.userId,
+      body.eventId,
+      body.tierId,
+      body.email,
+      body.quantity,
+    );
+  }
+
+  // --- PARAMETERIZED ROUTES LAST ---
 
   @UseGuards(JwtAuthGuard)
   @Get(':id')
@@ -52,17 +100,6 @@ export class TicketsController {
   }
 
   @UseGuards(JwtAuthGuard)
-  @Post('check-in')
-  @ApiBearerAuth()
-  @ApiOperation({ summary: 'Check-in a ticket (Scanner only)' })
-  async checkIn(
-    @Body('qrHash') qrHash: string,
-    @Request() req,
-  ) {
-    return this.ticketsService.checkIn(qrHash, req.user.userId);
-  }
-
-  @UseGuards(JwtAuthGuard)
   @Post(':id/transfer')
   @ApiBearerAuth()
   @ApiOperation({ summary: 'Transfer ticket to another user' })
@@ -72,30 +109,5 @@ export class TicketsController {
     @Request() req,
   ) {
     return this.ticketsService.transferTicket(id, req.user.userId, email);
-  }
-
-  @UseGuards(JwtAuthGuard)
-  @Get('scanner/stats/:eventId')
-  @ApiBearerAuth()
-  @ApiOperation({ summary: 'Get gate ingress stats (Admin/Scanner)' })
-  async getGateStats(@Param('eventId') eventId: string) {
-    return this.ticketsService.getGateStats(eventId);
-  }
-
-  @UseGuards(JwtAuthGuard, AdminGuard)
-  @Post('issue-complimentary')
-  @ApiBearerAuth()
-  @ApiOperation({ summary: 'Issue complimentary tickets (Admin only)' })
-  async issueComplimentary(
-    @Body() body: { eventId: string; tierId: string; email: string; quantity: number },
-    @Request() req,
-  ) {
-    return this.ticketsService.issueComplimentaryTickets(
-      req.user.userId,
-      body.eventId,
-      body.tierId,
-      body.email,
-      body.quantity,
-    );
   }
 }

@@ -339,6 +339,36 @@ export class TicketsService {
   }
 
   /**
+   * Get global scanner stats (all events)
+   */
+  async getGlobalScannerStats() {
+    const checkedIn = await this.ticketsRepository.count({
+      where: { status: TicketStatus.REDEEMED },
+    });
+
+    const pending = await this.ticketsRepository.count({
+      where: [
+        { status: TicketStatus.ISSUED },
+        { status: TicketStatus.WON },
+      ],
+    });
+
+    const total = await this.ticketsRepository.count({
+      where: [
+        { status: TicketStatus.ISSUED },
+        { status: TicketStatus.WON },
+        { status: TicketStatus.REDEEMED },
+      ],
+    });
+
+    return {
+      checkedIn,
+      pending,
+      total,
+    };
+  }
+
+  /**
    * Get user tickets with pagination
    */
   async issueComplimentaryTickets(
