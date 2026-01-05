@@ -22,6 +22,11 @@ export enum EventStatus {
   ARCHIVED = 'ARCHIVED', // Admin-only status
 }
 
+export enum EventVisibility {
+  PUBLIC = 'PUBLIC',
+  PRIVATE = 'PRIVATE',
+}
+
 @Entity('events')
 export class Event {
   @PrimaryGeneratedColumn('uuid')
@@ -51,6 +56,16 @@ export class Event {
     default: EventStatus.DRAFT,
   })
   status: EventStatus;
+
+  @Column({
+    type: 'enum',
+    enum: EventVisibility,
+    default: EventVisibility.PUBLIC,
+  })
+  visibility: EventVisibility;
+
+  @Column({ nullable: true, select: false })
+  access_code: string;
 
   @Column({ default: false })
   lottery_enabled: boolean;

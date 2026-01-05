@@ -141,6 +141,13 @@ export class EventsController {
     return this.eventsService.delete(id);
   }
 
+  @Post(':id/verify-access')
+  @ApiOperation({ summary: 'Verify access code for private event' })
+  async verifyAccess(@Param('id') id: string, @Body() body: { accessCode: string }) {
+    const isValid = await this.eventsService.validateAccessCode(id, body.accessCode);
+    return { valid: isValid };
+  }
+
   // Ticket Tier Management
   @Get(':id/tiers')
   @ApiOperation({ summary: 'Get ticket tiers for an event' })

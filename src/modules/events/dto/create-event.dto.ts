@@ -43,6 +43,16 @@ export class CreateEventDto {
   @IsDateString()
   lottery_draw_date?: string;
 
+  @ApiProperty({ enum: ['PUBLIC', 'PRIVATE'], default: 'PUBLIC' })
+  @IsOptional()
+  @IsEnum(['PUBLIC', 'PRIVATE'])
+  visibility?: 'PUBLIC' | 'PRIVATE';
+
+  @ApiProperty({ required: false })
+  @IsOptional()
+  @IsString()
+  access_code?: string;
+
   @ApiProperty({ default: false, description: 'Enable Lipa Pole Pole (layaway payments) for this event' })
   @IsOptional()
   @IsBoolean()

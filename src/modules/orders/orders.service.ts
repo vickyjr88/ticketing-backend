@@ -108,6 +108,22 @@ export class OrdersService {
       await this.ordersRepository.save(order);
     }
 
+    // Check for Free Order (totalAmount === 0)
+    if (order.total_amount <= 0) {
+      order.payment_status = PaymentStatus.PAID;
+      order.paid_at = new Date();
+      await this.ordersRepository.save(order);
+      await this.ticketsService.activateTicketsForOrder(order.id);
+
+      return {
+        order,
+        tickets,
+        paymentRequired: false,
+        discount_applied: discountAmount,
+        message: 'Order completed successfully (Free).',
+      };
+    }
+
     return {
       order,
       tickets,

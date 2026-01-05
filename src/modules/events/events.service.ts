@@ -6,8 +6,8 @@ import {
   OnModuleInit,
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Repository } from 'typeorm';
-import { Event, EventStatus } from '../../entities/event.entity';
+import { Repository, DeepPartial } from 'typeorm';
+import { Event, EventStatus, EventVisibility } from '../../entities/event.entity';
 import { TicketTier, TierCategory } from '../../entities/ticket-tier.entity';
 import { CreateEventDto } from './dto/create-event.dto';
 import { UpdateEventDto } from './dto/update-event.dto';
@@ -42,10 +42,15 @@ export class EventsService implements OnModuleInit {
   }
 
   async create(createEventDto: CreateEventDto, user?: any): Promise<Event> {
+    const visibility = createEventDto.visibility
+      ? EventVisibility[createEventDto.visibility as keyof typeof EventVisibility]
+      : EventVisibility.PUBLIC;
+
     const event = this.eventsRepository.create({
       ...createEventDto,
+      visibility,
       user_id: user?.userId,
-    });
+    } as unknown as DeepPartial<Event>); // Explicit cast to handle complex DTO -> Entity mapping
     return this.eventsRepository.save(event);
   }
 
@@ -83,9 +88,21 @@ export class EventsService implements OnModuleInit {
   }
 
   async findPublished(page: number = 1, limit: number = 20): Promise<PaginatedResult<Event>> {
-    const result = await this.findAll(page, limit, EventStatus.PUBLISHED);
-    this.logger.log(`findPublished: Found ${result.data.length} of ${result.meta.total} published events`);
-    return result;
+    const query = this.eventsRepository
+      .createQueryBuilder('event')
+      .leftJoinAndSelect('event.ticket_tiers', 'tiers', 'tiers.is_active = :isActive', { isActive: true })
+      .leftJoinAndSelect('event.products', 'products')
+      .where('event.status = :status', { status: EventStatus.PUBLISHED })
+      // Only show PUBLIC events in the main feed
+      .andWhere('(event.visibility IS NULL OR event.visibility = :publicVisibility)', { publicVisibility: EventVisibility.PUBLIC })
+      .orderBy('event.start_date', 'ASC');
+
+    const total = await query.getCount();
+    query.skip((page - 1) * limit).take(limit);
+    const events = await query.getMany();
+
+    this.logger.log(`findPublished: Found ${events.length} of ${total} published public events`);
+    return createPaginatedResult(events, total, page, limit);
   }
 
   async findById(id: string): Promise<Event> {
@@ -104,8 +121,31 @@ export class EventsService implements OnModuleInit {
   }
 
   async update(id: string, updateEventDto: UpdateEventDto): Promise<Event> {
-    await this.eventsRepository.update(id, updateEventDto);
+    const updateData: any = { ...updateEventDto };
+
+    if (updateEventDto.visibility) {
+      updateData.visibility = EventVisibility[updateEventDto.visibility as keyof typeof EventVisibility];
+    }
+
+    await this.eventsRepository.update(id, updateData);
     return this.findById(id);
+  }
+
+  async validateAccessCode(eventId: string, accessCode: string): Promise<boolean> {
+    const event = await this.eventsRepository.findOne({ where: { id: eventId }, select: ['id', 'access_code', 'visibility'] });
+    if (!event) {
+      throw new NotFoundException('Event not found');
+    }
+
+    if (event.visibility !== EventVisibility.PRIVATE) {
+      return true; // Public events don't need code
+    }
+
+    if (!event.access_code) {
+      return true; // Private but no code set? Treat as open (or maybe false? Let's assume open if no code)
+    }
+
+    return event.access_code === accessCode;
   }
 
   async getFeaturedEvent(): Promise<Event | null> {
