@@ -61,6 +61,9 @@ export class Event {
   @Column({ default: false })
   is_featured: boolean;
 
+  @Column({ default: false })
+  allows_layaway: boolean; // Enable Lipa Pole Pole for this event
+
 
   @CreateDateColumn()
   created_at: Date;

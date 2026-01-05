@@ -42,4 +42,9 @@ export class CreateEventDto {
   @IsOptional()
   @IsDateString()
   lottery_draw_date?: string;
+
+  @ApiProperty({ default: false, description: 'Enable Lipa Pole Pole (layaway payments) for this event' })
+  @IsOptional()
+  @IsBoolean()
+  allows_layaway?: boolean;
 }

@@ -14,9 +14,11 @@ import { User } from './user.entity';
 import { Ticket } from './ticket.entity';
 import { Event } from './event.entity';
 import { OrderProduct } from './order-product.entity';
+import { PartialPayment } from './partial-payment.entity';
 
 export enum PaymentStatus {
   PENDING = 'PENDING',
+  PARTIAL = 'PARTIAL', // For Lipa Pole Pole
   PAID = 'PAID',
   FAILED = 'FAILED',
   REFUNDED = 'REFUNDED',
@@ -28,6 +30,11 @@ export enum PaymentProvider {
   PAYPAL = 'PAYPAL',
   PAYSTACK = 'PAYSTACK',
   COMPLIMENTARY = 'COMPLIMENTARY',
+}
+
+export enum PaymentType {
+  FULL = 'FULL',
+  LIPA_POLE_POLE = 'LIPA_POLE_POLE',
 }
 
 @Entity('orders')
@@ -57,6 +64,16 @@ export class Order {
   })
   payment_provider: PaymentProvider;
 
+  @Column({
+    type: 'enum',
+    enum: PaymentType,
+    default: PaymentType.FULL,
+  })
+  payment_type: PaymentType;
+
+  @Column('decimal', { precision: 10, scale: 2, default: 0 })
+  amount_paid: number; // Total amount paid so far (for Lipa Pole Pole)
+
   @Column({ nullable: true })
   provider_ref: string; // External payment reference
 
@@ -74,6 +91,9 @@ export class Order {
 
   @Column('decimal', { precision: 10, scale: 2, nullable: true })
   subtotal: number; // Original amount before discount
+
+  @Column({ type: 'timestamp', nullable: true })
+  layaway_deadline: Date; // Optional deadline for Lipa Pole Pole payments
 
   @CreateDateColumn()
   created_at: Date;
@@ -95,6 +115,18 @@ export class Order {
 
   @OneToMany(() => OrderProduct, (op) => op.order, { cascade: true })
   order_products: OrderProduct[];
+
+  @OneToMany(() => PartialPayment, (pp) => pp.order)
+  partial_payments: PartialPayment[];
+
+  // Computed property for balance due
+  get balance_due(): number {
+    return Number(this.total_amount) - Number(this.amount_paid || 0);
+  }
+
+  get is_fully_paid(): boolean {
+    return Number(this.amount_paid || 0) >= Number(this.total_amount);
+  }
 
   @BeforeInsert()
   @BeforeUpdate()

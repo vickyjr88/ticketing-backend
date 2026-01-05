@@ -21,6 +21,7 @@ import { ProductsModule } from './modules/products/products.module';
 import { MediaModule } from './modules/media/media.module';
 import { GatesModule } from './modules/gates/gates.module';
 import { ContactModule } from './modules/contact/contact.module';
+import { LayawayModule } from './modules/layaway/layaway.module';
 import { CronService } from './modules/cron/cron/cron.service';
 
 // Entities for CronService
@@ -79,6 +80,7 @@ import { TicketTier } from './entities/ticket-tier.entity';
         MediaModule,
         GatesModule,
         ContactModule,
+        LayawayModule,
     ],
     providers: [CronService],
 })
