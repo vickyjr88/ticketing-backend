@@ -11,7 +11,7 @@ async function bootstrap() {
   // Run migrations and seeds on startup
   try {
     const dataSource = app.get(DataSource);
-    
+
     // Run migrations (if any exist)
     console.log('🔄 Running database migrations...');
     const migrations = await dataSource.runMigrations();
@@ -49,7 +49,7 @@ async function bootstrap() {
     origin: (origin, callback) => {
       // Allow requests with no origin (like mobile apps, Postman, curl)
       if (!origin) return callback(null, true);
-      
+
       if (allowedOrigins.includes(origin)) {
         callback(null, true);
       } else {
@@ -67,6 +67,9 @@ async function bootstrap() {
       whitelist: true,
       forbidNonWhitelisted: true,
       transform: true,
+      transformOptions: {
+        enableImplicitConversion: true,
+      },
     }),
   );
 
