@@ -25,6 +25,6 @@ import { PaymentSettingsController } from './payment-settings.controller';
     PaymentSettingsService
   ],
   controllers: [PaymentsController, PaymentSettingsController],
-  exports: [PaymentsService],
+  exports: [PaymentsService, MpesaService, StripeService, PaystackService, PaymentSettingsService],
 })
 export class PaymentsModule { }
