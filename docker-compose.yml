@@ -53,6 +53,7 @@ services:
       BREVO_API_KEY: ${BREVO_API_KEY}
       AWS_S3_BUCKET: ${AWS_S3_BUCKET}
       AWS_S3_REGION: ${AWS_S3_REGION:-us-east-1}
+      AWS_REGION: ${AWS_REGION:-us-east-1}
       CDN_URL: ${CDN_URL}
       AWS_S3_BUCKET_URL: ${AWS_S3_BUCKET_URL}
       AWS_ACCESS_KEY_ID: ${AWS_ACCESS_KEY_ID}
