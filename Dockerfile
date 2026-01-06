@@ -4,7 +4,7 @@ FROM node:18-alpine AS builder
 WORKDIR /app
 
 # Copy package files
-COPY package.json package-lock.json ./
+COPY package*.json ./
 COPY tsconfig*.json ./
 COPY nest-cli.json ./
 
@@ -23,7 +23,7 @@ FROM node:18-alpine
 WORKDIR /app
 
 # Copy package files
-COPY package.json package-lock.json ./
+COPY package*.json ./
 
 # Install production dependencies only
 RUN npm install --production --legacy-peer-deps && npm cache clean --force
