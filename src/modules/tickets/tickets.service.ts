@@ -10,6 +10,7 @@ import { TicketTier } from '../../entities/ticket-tier.entity';
 import { Order, PaymentProvider, PaymentStatus } from '../../entities/order.entity';
 import { User } from '../../entities/user.entity';
 import { EventsService } from '../events/events.service';
+import { EventsGateway } from '../events/events.gateway';
 import { PaginatedResult, createPaginatedResult } from '../../common/dto/pagination.dto';
 import * as QRCode from 'qrcode';
 import { v4 as uuidv4 } from 'uuid';
@@ -30,7 +31,9 @@ export class TicketsService {
     private ordersRepository: Repository<Order>,
     @InjectRepository(User)
     private userRepository: Repository<User>,
+
     private eventsService: EventsService,
+    private eventsGateway: EventsGateway,
     private dataSource: DataSource,
   ) { }
 
@@ -318,7 +321,19 @@ export class TicketsService {
     ticket.checked_in_by = scannerId;
     ticket.checked_in_gate = scanner?.assigned_gate || 'Unassigned';
 
-    return this.ticketsRepository.save(ticket);
+    const savedTicket = await this.ticketsRepository.save(ticket);
+
+    // Emit real-time check-in event
+    this.eventsGateway.emitCheckIn(ticket.event_id, {
+      ticketId: ticket.id,
+      tierName: ticket.tier?.name,
+      gate: ticket.checked_in_gate,
+      scannedAt: ticket.checked_in_at,
+      // TODO: This count query might be expensive on high load, consider caching or incrementing redis counter
+      totalCheckIns: await this.ticketsRepository.count({ where: { event_id: ticket.event_id, status: TicketStatus.REDEEMED } })
+    });
+
+    return savedTicket;
   }
 
   /**
