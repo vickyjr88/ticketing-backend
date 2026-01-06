@@ -60,7 +60,11 @@ export class TicketsController {
     @Body('qrHash') qrHash: string,
     @Request() req,
   ) {
-    return this.ticketsService.checkIn(qrHash, req.user.userId);
+    const ticket = await this.ticketsService.checkIn(qrHash, req.user.userId);
+    return {
+      message: 'Ticket checked in successfully',
+      ticket,
+    };
   }
 
   @UseGuards(JwtAuthGuard, AdminGuard)
