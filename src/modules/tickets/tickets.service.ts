@@ -11,6 +11,7 @@ import { Order, PaymentProvider, PaymentStatus } from '../../entities/order.enti
 import { User } from '../../entities/user.entity';
 import { EventsService } from '../events/events.service';
 import { EventsGateway } from '../events/events.gateway';
+import { NotificationsService } from '../notifications/notifications.service';
 import { PaginatedResult, createPaginatedResult } from '../../common/dto/pagination.dto';
 import * as QRCode from 'qrcode';
 import { v4 as uuidv4 } from 'uuid';
@@ -34,6 +35,7 @@ export class TicketsService {
 
     private eventsService: EventsService,
     private eventsGateway: EventsGateway,
+    private notificationsService: NotificationsService,
     private dataSource: DataSource,
   ) { }
 
@@ -333,6 +335,14 @@ export class TicketsService {
       totalCheckIns: await this.ticketsRepository.count({ where: { event_id: ticket.event_id, status: TicketStatus.REDEEMED } })
     });
 
+    // Send Push Notification
+    this.notificationsService.sendToUser(
+      ticket.holder_id,
+      'Welcome to the event! 🎉',
+      `You have been checked in at ${ticket.checked_in_gate}. Enjoy!`,
+      { type: 'CHECK_IN_CONFIRMATION', ticketId: ticket.id }
+    ).catch(err => console.error('Push notification failed', err));
+
     return savedTicket;
   }
 
@@ -351,6 +361,35 @@ export class TicketsService {
       .getRawMany();
 
     return stats;
+  }
+
+  /**
+   * Get recent check-ins for an event (for Live Dashboard)
+   */
+  async getEventCheckIns(eventId: string, limit: number = 50) {
+    const checkIns = await this.ticketsRepository.find({
+      where: {
+        event_id: eventId,
+        status: TicketStatus.REDEEMED,
+      },
+      relations: ['holder', 'tier'],
+      order: { checked_in_at: 'DESC' },
+      take: limit,
+    });
+
+    return {
+      data: checkIns.map(ticket => ({
+        id: ticket.id,
+        holder: {
+          first_name: ticket.holder?.first_name || 'Guest',
+          last_name: ticket.holder?.last_name || '',
+        },
+        tier_name: ticket.tier?.name,
+        checked_in_at: ticket.checked_in_at,
+        checked_in_gate: ticket.checked_in_gate,
+      })),
+      total: checkIns.length,
+    };
   }
 
   /**

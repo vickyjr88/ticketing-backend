@@ -15,6 +15,8 @@ import { CreateTierDto } from './dto/create-tier.dto';
 import { UpdateTierDto } from './dto/update-tier.dto';
 import { PaginatedResult, createPaginatedResult } from '../../common/dto/pagination.dto';
 
+import { WaitlistService } from '../waitlist/waitlist.service';
+
 @Injectable()
 export class EventsService implements OnModuleInit {
   private readonly logger = new Logger(EventsService.name);
@@ -24,7 +26,9 @@ export class EventsService implements OnModuleInit {
     private eventsRepository: Repository<Event>,
     @InjectRepository(TicketTier)
     private tierRepository: Repository<TicketTier>,
+    private waitlistService: WaitlistService,
   ) { }
+
 
   async onModuleInit() {
     try {
@@ -230,6 +234,9 @@ export class EventsService implements OnModuleInit {
   }
 
   async updateTier(tierId: string, updateTierDto: UpdateTierDto): Promise<TicketTier> {
+    const existingTier = await this.getTierById(tierId);
+    const oldPrice = parseFloat(existingTier.price.toString()); // Ensure number
+
     const updateData: Partial<TicketTier> = { ...updateTierDto } as unknown as Partial<TicketTier>;
 
     if (updateTierDto.sales_start) {
@@ -240,7 +247,25 @@ export class EventsService implements OnModuleInit {
     }
 
     await this.tierRepository.update(tierId, updateData);
-    return this.getTierById(tierId);
+    const updatedTier = await this.getTierById(tierId);
+
+    // Check for price drop
+    if (updateTierDto.price !== undefined) {
+      const newPrice = parseFloat(updateTierDto.price.toString());
+      if (newPrice < oldPrice) {
+        try {
+          const event = await this.eventsRepository.findOne({ where: { id: existingTier.event_id } });
+          if (event) {
+            updatedTier.event = event;
+            this.waitlistService.notifyPriceDrop(updatedTier, oldPrice, newPrice);
+          }
+        } catch (e) {
+          this.logger.error(`Failed to notify price drop: ${e.message}`);
+        }
+      }
+    }
+
+    return updatedTier;
   }
 
   async isTierAvailable(tierId: string): Promise<boolean> {

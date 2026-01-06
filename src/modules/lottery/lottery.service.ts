@@ -12,6 +12,7 @@ import { Ticket, TicketStatus } from '../../entities/ticket.entity';
 import { Event } from '../../entities/event.entity';
 import { User } from '../../entities/user.entity';
 import { EmailService } from '../email/email.service';
+import { NotificationsService } from '../notifications/notifications.service';
 import { PaginatedResult, createPaginatedResult } from '../../common/dto/pagination.dto';
 
 @Injectable()
@@ -27,6 +28,7 @@ export class LotteryService {
     private userRepository: Repository<User>,
     private dataSource: DataSource,
     private emailService: EmailService,
+    private notificationsService: NotificationsService,
   ) { }
 
   /**
@@ -240,6 +242,15 @@ export class LotteryService {
         eventDate,
         isWinner,
       }).catch(err => console.error(`Failed to send lottery result to ${user.email}:`, err));
+
+      if (isWinner) {
+        this.notificationsService.sendToUser(
+          user.id,
+          'You Won the Lottery! 🎫',
+          `Congratulations! You have been selected for a ticket to ${event.title}.`,
+          { type: 'LOTTERY_WINNER', eventId: event.id }
+        ).catch(err => console.error('Push notification failed', err));
+      }
 
       // Small delay to avoid rate limiting
       await new Promise(resolve => setTimeout(resolve, 100));

@@ -6,9 +6,12 @@ import { Waitlist } from '../../entities/waitlist.entity';
 import { TicketTier } from '../../entities/ticket-tier.entity';
 import { Event } from '../../entities/event.entity';
 
+import { NotificationsModule } from '../notifications/notifications.module';
+
 @Module({
     imports: [
         TypeOrmModule.forFeature([Waitlist, TicketTier, Event]),
+        NotificationsModule,
     ],
     controllers: [WaitlistController],
     providers: [WaitlistService],

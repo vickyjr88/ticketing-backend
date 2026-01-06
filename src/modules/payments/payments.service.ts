@@ -7,6 +7,7 @@ import { StripeService } from './services/stripe.service';
 import { PaystackService } from './services/paystack.service';
 import { EmailService } from '../email/email.service';
 import { OrdersService } from '../orders/orders.service';
+import { NotificationsService } from '../notifications/notifications.service';
 
 
 @Injectable()
@@ -20,7 +21,8 @@ export class PaymentsService {
     private stripeService: StripeService,
     private paystackService: PaystackService,
     private emailService: EmailService,
-    private ordersService: OrdersService, // Injected dependency
+    private ordersService: OrdersService,
+    private notificationsService: NotificationsService,
   ) { }
 
   /**
@@ -337,6 +339,16 @@ export class PaymentsService {
         totalAmount: Number(order.total_amount),
         currency: 'KES',
       });
+
+
+
+      // Send Push Notification
+      this.notificationsService.sendToUser(
+        order.user_id,
+        'Order Confirmed! 🎟️',
+        `Your order for ${order.event?.title || 'Event'} has been confirmed!`,
+        { type: 'ORDER_CONFIRMATION', orderId: order.id }
+      ).catch(err => console.error('Push notification failed', err));
 
       this.logger.log(`Order confirmation email sent for order ${orderId}`);
     } catch (error) {

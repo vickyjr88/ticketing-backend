@@ -7,8 +7,10 @@ import { EventsController } from './events.controller';
 import { S3Service } from '../../services/s3.service';
 import { EventsGateway } from './events.gateway';
 
+import { WaitlistModule } from '../waitlist/waitlist.module';
+
 @Module({
-  imports: [TypeOrmModule.forFeature([Event, TicketTier])],
+  imports: [TypeOrmModule.forFeature([Event, TicketTier]), WaitlistModule],
   providers: [EventsService, S3Service, EventsGateway],
   controllers: [EventsController],
   exports: [EventsService, EventsGateway],

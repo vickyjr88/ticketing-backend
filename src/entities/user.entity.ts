@@ -81,4 +81,8 @@ export class User {
   @Column({ type: 'timestamp', nullable: true })
   @Exclude()
   reset_password_expires: Date;
+
+  @Column({ nullable: true })
+  @Exclude()
+  fcm_token: string;
 }

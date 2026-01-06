@@ -6,6 +6,7 @@ import { TicketTier } from '../../entities/ticket-tier.entity';
 import { Event } from '../../entities/event.entity';
 import { JoinWaitlistDto } from './dto/join-waitlist.dto';
 import { EmailService } from '../email/email.service';
+import { NotificationsService } from '../notifications/notifications.service';
 
 @Injectable()
 export class WaitlistService {
@@ -17,6 +18,7 @@ export class WaitlistService {
         @InjectRepository(Event)
         private eventRepository: Repository<Event>,
         private emailService: EmailService,
+        private notificationsService: NotificationsService,
     ) { }
 
     async join(dto: JoinWaitlistDto, userId?: string): Promise<Waitlist> {
@@ -101,10 +103,36 @@ export class WaitlistService {
                 notifiedCount++;
             }
 
+            if (entry.user_id) {
+                this.notificationsService.sendToUser(
+                    entry.user_id,
+                    `Tickets Available! 🎟️`,
+                    `Tickets for ${tier.name} are now available! grab yours before they run out.`,
+                    { type: 'WAITLIST_ALERT', eventId: eventId, tierId: tierId }
+                ).catch(err => console.error('Push failed', err));
+            }
+
             // Small delay to avoid rate limiting
             await new Promise(resolve => setTimeout(resolve, 100));
         }
 
         return notifiedCount;
+    }
+
+    async notifyPriceDrop(tier: TicketTier, oldPrice: number, newPrice: number) {
+        const entries = await this.waitlistRepository.find({
+            where: { tier_id: tier.id },
+        });
+
+        for (const entry of entries) {
+            if (entry.user_id) {
+                this.notificationsService.sendToUser(
+                    entry.user_id,
+                    'Price Drop Alert! 📉',
+                    `Good news! The price for ${tier.name} has dropped to KES ${newPrice}. Book now!`,
+                    { type: 'PRICE_DROP', tierId: tier.id, eventId: tier.event?.id || '' }
+                ).catch(err => console.error('Push failed', err));
+            }
+        }
     }
 }

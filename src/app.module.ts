@@ -23,6 +23,7 @@ import { GatesModule } from './modules/gates/gates.module';
 import { ContactModule } from './modules/contact/contact.module';
 import { LayawayModule } from './modules/layaway/layaway.module';
 import { CronService } from './modules/cron/cron/cron.service';
+import { NotificationsModule } from './modules/notifications/notifications.module';
 
 // Entities for CronService
 import { Order } from './entities/order.entity';
@@ -81,6 +82,7 @@ import { TicketTier } from './entities/ticket-tier.entity';
         GatesModule,
         ContactModule,
         LayawayModule,
+        NotificationsModule,
     ],
     providers: [CronService],
 })

@@ -8,8 +8,13 @@ import { LotteryController } from './lottery.controller';
 
 import { User } from '../../entities/user.entity';
 
+import { NotificationsModule } from '../notifications/notifications.module';
+
 @Module({
-  imports: [TypeOrmModule.forFeature([LotteryEntry, Ticket, Event, User])],
+  imports: [
+    TypeOrmModule.forFeature([LotteryEntry, Ticket, Event, User]),
+    NotificationsModule
+  ],
   providers: [LotteryService],
   controllers: [LotteryController],
   exports: [LotteryService],

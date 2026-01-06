@@ -11,11 +11,13 @@ import { OrdersModule } from '../orders/orders.module';
 import { PaymentConfig } from '../../entities/payment-config.entity';
 import { PaymentSettingsService } from './payment-settings.service';
 import { PaymentSettingsController } from './payment-settings.controller';
+import { NotificationsModule } from '../notifications/notifications.module';
 
 @Module({
   imports: [
     TypeOrmModule.forFeature([Order, PaymentConfig]),
     forwardRef(() => OrdersModule),
+    NotificationsModule,
   ],
   providers: [
     PaymentsService,

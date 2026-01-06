@@ -84,6 +84,18 @@ export class TicketsController {
     );
   }
 
+  @UseGuards(JwtAuthGuard, AdminGuard)
+  @Get('event/:eventId/check-ins')
+  @ApiBearerAuth()
+  @ApiOperation({ summary: 'Get recent check-ins for an event (Admin only)' })
+  @ApiQuery({ name: 'limit', required: false })
+  async getEventCheckIns(
+    @Param('eventId') eventId: string,
+    @Query('limit', new DefaultValuePipe(50), ParseIntPipe) limit: number,
+  ) {
+    return this.ticketsService.getEventCheckIns(eventId, limit);
+  }
+
   // --- PARAMETERIZED ROUTES LAST ---
 
   @UseGuards(JwtAuthGuard)

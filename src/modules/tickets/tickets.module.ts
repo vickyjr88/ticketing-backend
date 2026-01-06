@@ -9,10 +9,13 @@ import { EventsModule } from '../events/events.module';
 
 import { User } from '../../entities/user.entity';
 
+import { NotificationsModule } from '../notifications/notifications.module';
+
 @Module({
   imports: [
     TypeOrmModule.forFeature([Ticket, TicketTier, Order, User]),
     EventsModule,
+    NotificationsModule,
   ],
   providers: [TicketsService],
   controllers: [TicketsController],
