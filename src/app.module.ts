@@ -51,9 +51,10 @@ import { TicketTier } from './entities/ticket-tier.entity';
                 entities: [__dirname + '/**/*.entity{.ts,.js}'],
                 synchronize: false, // Use migrations instead
                 logging: configService.get('NODE_ENV') === 'development',
-                ssl: configService.get('NODE_ENV') === 'production'
-                    ? { rejectUnauthorized: false }
-                    : false,
+                // ssl: configService.get('NODE_ENV') === 'production'
+                //     ? { rejectUnauthorized: false }
+                //     : false,
+                ssl: false,
             }),
             inject: [ConfigService],
         }),
