@@ -138,7 +138,8 @@ export class EventsController {
   @ApiBearerAuth()
   @ApiOperation({ summary: 'Delete event (Admin only)' })
   async delete(@Param('id') id: string) {
-    return this.eventsService.delete(id);
+    await this.eventsService.delete(id);
+    return { message: 'Event deleted successfully' };
   }
 
   @Post(':id/verify-access')
@@ -186,7 +187,8 @@ export class EventsController {
     @Param('id') id: string,
     @Param('tierId') tierId: string,
   ) {
-    return this.eventsService.deleteTier(tierId);
+    await this.eventsService.deleteTier(tierId);
+    return { message: 'Ticket tier deleted successfully' };
   }
 
   @UseGuards(JwtAuthGuard)
