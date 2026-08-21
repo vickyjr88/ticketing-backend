@@ -27,13 +27,20 @@ export class AuthService {
     const payload = { email: user.email, sub: user.id, role: user.role };
     return {
       access_token: this.jwtService.sign(payload),
-      user: {
-        id: user.id,
-        email: user.email,
-        first_name: user.first_name,
-        last_name: user.last_name,
-        role: user.role,
-      },
+      user: this.toPublicUser(user),
+    };
+  }
+
+  private toPublicUser(user: User) {
+    return {
+      id: user.id,
+      email: user.email,
+      first_name: user.first_name,
+      last_name: user.last_name,
+      phone_number: user.phone_number,
+      role: user.role,
+      is_active: user.is_active,
+      assigned_gate: user.assigned_gate ?? null,
     };
   }
 

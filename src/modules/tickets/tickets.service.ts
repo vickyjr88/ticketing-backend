@@ -9,6 +9,7 @@ import { Ticket, TicketType, TicketStatus } from '../../entities/ticket.entity';
 import { TicketTier } from '../../entities/ticket-tier.entity';
 import { Order, PaymentProvider, PaymentStatus } from '../../entities/order.entity';
 import { User } from '../../entities/user.entity';
+import { GateAssignment } from '../../entities/gate-assignment.entity';
 import { EventsService } from '../events/events.service';
 import { EventsGateway } from '../events/events.gateway';
 import { NotificationsService } from '../notifications/notifications.service';
@@ -32,6 +33,8 @@ export class TicketsService {
     private ordersRepository: Repository<Order>,
     @InjectRepository(User)
     private userRepository: Repository<User>,
+    @InjectRepository(GateAssignment)
+    private gateAssignmentRepository: Repository<GateAssignment>,
 
     private eventsService: EventsService,
     private eventsGateway: EventsGateway,
@@ -314,14 +317,21 @@ export class TicketsService {
       throw new BadRequestException('This ticket is in the lottery pool and hasn\'t been won yet.');
     }
 
-    // Fetch scanner to get assigned gate
-    const scanner = await this.userRepository.findOne({ where: { id: scannerId } });
+    // Prefer the scanner's gate assignment for this event, then the legacy assigned_gate field
+    const [scanner, assignment] = await Promise.all([
+      this.userRepository.findOne({ where: { id: scannerId } }),
+      this.gateAssignmentRepository.findOne({
+        where: { scanner_id: scannerId, event_id: ticket.event_id, is_active: true },
+        relations: ['gate'],
+      }),
+    ]);
 
     // Update ticket status
     ticket.status = TicketStatus.REDEEMED;
     ticket.checked_in_at = new Date();
     ticket.checked_in_by = scannerId;
-    ticket.checked_in_gate = scanner?.assigned_gate || 'Unassigned';
+    ticket.checked_in_gate =
+      assignment?.gate?.name || scanner?.assigned_gate || 'Unassigned';
 
     const savedTicket = await this.ticketsRepository.save(ticket);
 

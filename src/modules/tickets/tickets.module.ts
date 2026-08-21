@@ -8,12 +8,13 @@ import { TicketsController } from './tickets.controller';
 import { EventsModule } from '../events/events.module';
 
 import { User } from '../../entities/user.entity';
+import { GateAssignment } from '../../entities/gate-assignment.entity';
 
 import { NotificationsModule } from '../notifications/notifications.module';
 
 @Module({
   imports: [
-    TypeOrmModule.forFeature([Ticket, TicketTier, Order, User]),
+    TypeOrmModule.forFeature([Ticket, TicketTier, Order, User, GateAssignment]),
     EventsModule,
     NotificationsModule,
   ],

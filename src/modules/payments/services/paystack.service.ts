@@ -59,9 +59,9 @@ export class PaystackService {
                 };
             }
 
-            // Get currency from config or default to KES (Kenyan Shillings)
-            // Paystack supports: NGN, GHS, ZAR, KES, USD
-            const currency = this.configService.get('PAYSTACK_CURRENCY') || 'KES';
+            // Only send an explicit currency when configured.
+            // Otherwise let Paystack fall back to the integration's default currency.
+            const currency = this.configService.get('PAYSTACK_CURRENCY');
 
             // Paystack expects amount in kobo/cents (multiply by 100)
             const payload = {
@@ -72,10 +72,10 @@ export class PaystackService {
                 metadata: {
                     order_id: orderId,
                 },
-                currency,
+                ...(currency ? { currency } : {}),
             };
 
-            this.logger.log(`Initializing Paystack transaction: email=${email}, amount=${amount}, currency=${currency}, reference=${payload.reference}`);
+            this.logger.log(`Initializing Paystack transaction: email=${email}, amount=${amount}, currency=${currency || 'integration-default'}, reference=${payload.reference}`);
 
             const response = await axios.post(
                 `${this.baseUrl}/transaction/initialize`,

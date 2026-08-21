@@ -8,6 +8,7 @@ import {
     Param,
     Query,
     UseGuards,
+    Request,
     ParseUUIDPipe,
 } from '@nestjs/common';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
@@ -52,6 +53,12 @@ export class GatesController {
     @Roles(UserRole.ADMIN)
     async getScanners() {
         return this.gatesService.getScanners();
+    }
+
+    @Get('my-assignments')
+    @Roles(UserRole.ADMIN, UserRole.SCANNER)
+    async getMyAssignments(@Request() req) {
+        return this.gatesService.getScannerAssignments(req.user.userId);
     }
 
     @Get(':id')

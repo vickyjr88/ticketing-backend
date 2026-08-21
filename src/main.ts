@@ -41,7 +41,8 @@ async function bootstrap() {
     'http://3.225.246.72:3000',  // Production frontend
     'https://3.225.246.72',  // Production backend IP (HTTPS)
     'https://tickets.triklecamp.com',  // Production frontend
-    'https://tickets.vitaldigitalmedia.net',  // Production frontend
+    'https://tickets.vitaldigitalmedia.net',  // Production frontend (HTTPS)
+    'http://tickets.vitaldigitalmedia.net',  // Production frontend (HTTP)
     process.env.FRONTEND_URL,
   ].filter(Boolean);
 

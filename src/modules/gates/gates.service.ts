@@ -112,7 +112,15 @@ export class GatesService {
         }
 
         const assignment = this.assignmentsRepository.create(dto);
-        return this.assignmentsRepository.save(assignment);
+        const saved = await this.assignmentsRepository.save(assignment);
+
+        if (dto.scanner_id) {
+            await this.usersRepository.update(dto.scanner_id, {
+                assigned_gate: gate.name,
+            });
+        }
+
+        return saved;
     }
 
     async bulkAssignGatesToEvent(dto: BulkAssignGatesDto): Promise<GateAssignment[]> {
