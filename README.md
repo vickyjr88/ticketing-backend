@@ -165,6 +165,51 @@ docker run -p 3000:3000 --env-file .env ticketing-backend
 docker-compose -f deployment/docker-compose.prod.yml up -d
 ```
 
+## Resend ticket emails (Docker / production)
+
+The backend image is compiled JS only (`dist/`). After deploying a build that includes this script, run it **inside** `ticketing-backend`. The container already has `DB_*` and `BREVO_API_KEY` from Compose — do not pass a `.env` file.
+
+Rebuild first so `dist/scripts/resend-tickets.js` exists in the image:
+
+```bash
+docker compose build backend && docker compose up -d backend
+# or however you normally redeploy ticketing-backend
+docker logs --tail 50 ticketing-backend
+```
+
+Then SSH to the server and:
+
+```bash
+# 1. Confirm the script is in the image
+docker exec ticketing-backend ls dist/scripts/resend-tickets.js
+
+# 2. List events and ISSUED/WON ticket counts
+docker exec -it ticketing-backend node dist/scripts/resend-tickets.js --list-events
+
+# 3. Dry run (default) — prints holders, sends nothing
+docker exec -it ticketing-backend node dist/scripts/resend-tickets.js --event-id <EVENT_UUID>
+
+# 4. Test send to yourself
+docker exec -it ticketing-backend node dist/scripts/resend-tickets.js --event-id <EVENT_UUID> --email you@example.com --send
+
+# 5. Send everyone (5s delay, then one email per holder)
+docker exec -it ticketing-backend node dist/scripts/resend-tickets.js --event-id <EVENT_UUID> --send
+```
+
+Copy the CSV log off the container when finished:
+
+```bash
+docker cp ticketing-backend:/app/dist/scripts/. ./resend-logs/
+```
+
+Watch mail errors on the backend:
+
+```bash
+docker logs -f ticketing-backend
+```
+
+Local (not Docker): `npm run tickets:resend:dev -- --list-events`
+
 ### AWS Deployment
 
 See `../infrastructure/terraform/` for infrastructure as code setup.

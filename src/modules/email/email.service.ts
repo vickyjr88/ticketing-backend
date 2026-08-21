@@ -17,12 +17,33 @@ export enum EmailTemplate {
   PASSWORD_RESET = 'PASSWORD_RESET',
 }
 
+interface EmailAttachment {
+  name: string;
+  content: string; // base64
+}
+
 interface EmailParams {
   to: string;
   toName?: string;
   subject: string;
   htmlContent: string;
   textContent?: string;
+  attachments?: EmailAttachment[];
+}
+
+export interface TicketResendItem {
+  id: string;
+  tierName: string;
+  qrPngBase64: string;
+}
+
+export interface TicketResendEmailData {
+  customerName: string;
+  customerEmail: string;
+  eventTitle: string;
+  eventDate: string;
+  eventLocation: string;
+  tickets: TicketResendItem[];
 }
 
 interface OrderEmailData {
@@ -114,6 +135,13 @@ export class EmailService {
 
       if (params.textContent) {
         sendSmtpEmail.textContent = params.textContent;
+      }
+
+      if (params.attachments?.length) {
+        sendSmtpEmail.attachment = params.attachments.map((file) => ({
+          name: file.name,
+          content: file.content,
+        }));
       }
 
       await this.apiInstance.sendTransacEmail(sendSmtpEmail);
@@ -238,6 +266,24 @@ export class EmailService {
       toName: data.customerName,
       subject: `⏰ Reminder: ${data.eventTitle} is tomorrow!`,
       htmlContent: html,
+    });
+  }
+
+  /**
+   * Resend a holder their tickets, including QR codes as inline images and attachments.
+   */
+  async sendTicketsResend(data: TicketResendEmailData): Promise<boolean> {
+    const html = this.generateTicketsResendHtml(data);
+
+    return this.sendEmail({
+      to: data.customerEmail,
+      toName: data.customerName,
+      subject: `🎟️ Your tickets for ${data.eventTitle}`,
+      htmlContent: html,
+      attachments: data.tickets.map((ticket, index) => ({
+        name: `ticket-${index + 1}-${this.safeFilename(ticket.tierName)}.png`,
+        content: ticket.qrPngBase64,
+      })),
     });
   }
 
@@ -793,5 +839,84 @@ export class EmailService {
       </div>
     `;
     return this.getBaseTemplate(content);
+  }
+
+  private generateTicketsResendHtml(data: TicketResendEmailData): string {
+    const name = this.escapeHtml(data.customerName);
+    const eventTitle = this.escapeHtml(data.eventTitle);
+    const eventDate = this.escapeHtml(data.eventDate);
+    const eventLocation = this.escapeHtml(data.eventLocation);
+    const ticketCards = data.tickets
+      .map((ticket, index) => {
+        const tierName = this.escapeHtml(ticket.tierName);
+        const shortId = this.escapeHtml(ticket.id.substring(0, 8).toUpperCase());
+        return `
+          <div style="border: 1px solid #e2e8f0; border-radius: 12px; padding: 20px; margin: 16px 0; text-align: center;">
+            <p style="margin: 0 0 8px 0; font-weight: 700; color: #1e293b;">Ticket ${index + 1} · ${tierName}</p>
+            <p style="margin: 0 0 12px 0; font-size: 12px; color: #64748b;">ID ${shortId}</p>
+            <img src="data:image/png;base64,${ticket.qrPngBase64}" alt="Ticket QR code ${index + 1}" width="220" height="220" style="width: 220px; height: 220px; border: 8px solid #fff; box-shadow: 0 1px 4px rgba(0,0,0,0.08);" />
+            <p style="margin: 12px 0 0 0; font-size: 12px; color: #64748b;">Show this QR code at the gate</p>
+          </div>
+        `;
+      })
+      .join('');
+
+    const content = `
+      <div class="header">
+        <div class="emoji">🎟️</div>
+        <h1>Your Tickets</h1>
+      </div>
+      <div class="content">
+        <p>Hi ${name},</p>
+        <p>We're resending your tickets after an email delivery issue. Your tickets are valid — please save this email or screenshot the QR codes below.</p>
+
+        <div class="info-box">
+          <div class="info-row">
+            <span class="info-label">Event</span>
+            <span class="info-value">${eventTitle}</span>
+          </div>
+          <div class="info-row">
+            <span class="info-label">Date</span>
+            <span class="info-value">${eventDate}</span>
+          </div>
+          <div class="info-row">
+            <span class="info-label">Location</span>
+            <span class="info-value">${eventLocation}</span>
+          </div>
+          <div class="info-row">
+            <span class="info-label">Tickets</span>
+            <span class="info-value">${data.tickets.length} ticket(s)</span>
+          </div>
+        </div>
+
+        ${ticketCards}
+
+        <p style="font-size: 14px; color: #64748b;">QR codes are also attached to this email as PNG files if the images above do not display.</p>
+
+        <center>
+          <a href="${this.baseDomain}/my-tickets" class="button">View My Tickets</a>
+        </center>
+
+        <p style="margin-top: 24px; text-align: center;">See you there! 🎉</p>
+      </div>
+    `;
+    return this.getBaseTemplate(content);
+  }
+
+  private escapeHtml(value: string): string {
+    return String(value || '')
+      .replace(/&/g, '&amp;')
+      .replace(/</g, '&lt;')
+      .replace(/>/g, '&gt;')
+      .replace(/"/g, '&quot;')
+      .replace(/'/g, '&#39;');
+  }
+
+  private safeFilename(value: string): string {
+    const cleaned = String(value || 'ticket')
+      .replace(/[^a-z0-9]+/gi, '-')
+      .replace(/^-|-$/g, '')
+      .toLowerCase();
+    return cleaned || 'ticket';
   }
 }

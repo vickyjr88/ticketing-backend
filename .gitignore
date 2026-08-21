@@ -63,3 +63,5 @@ tmp/
 .cache/
 *.bak
 *.tmp
+scripts/resend-tickets-*.csv
+**/resend-tickets-*.csv
