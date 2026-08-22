@@ -1,6 +1,7 @@
 import {
     Controller,
     Get,
+    Post,
     Patch,
     Param,
     Body,
@@ -15,6 +16,7 @@ import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { RolesGuard } from '../auth/guards/roles.guard';
 import { Roles } from '../auth/decorators/roles.decorator';
 import { UserRole } from '../../entities/user.entity';
+import { CreateAdminUserDto, SetUserPasswordDto } from './dto/user.dto';
 
 @ApiTags('admin')
 @Controller('admin')
@@ -54,6 +56,21 @@ export class AdminController {
         @Query('role') role?: string,
     ) {
         return this.adminService.getUsers(page, limit, role);
+    }
+
+    @Post('users')
+    @ApiOperation({ summary: 'Create a user (admin, scanner, or regular)' })
+    async createUser(@Body() dto: CreateAdminUserDto) {
+        return this.adminService.createUser(dto);
+    }
+
+    @Patch('users/:id/password')
+    @ApiOperation({ summary: 'Set a new password for a user' })
+    async setUserPassword(
+        @Param('id') id: string,
+        @Body() dto: SetUserPasswordDto,
+    ) {
+        return this.adminService.setUserPassword(id, dto.password);
     }
 
     @Patch('users/:id/role')

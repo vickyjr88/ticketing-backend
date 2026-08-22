@@ -1,11 +1,13 @@
-import { Injectable } from '@nestjs/common';
+import { ConflictException, Injectable, NotFoundException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository, Between, LessThan, MoreThan } from 'typeorm';
+import * as bcrypt from 'bcryptjs';
 import { Order, PaymentStatus } from '../../entities/order.entity';
 import { User, UserRole } from '../../entities/user.entity';
 import { Event, EventStatus } from '../../entities/event.entity';
 import { Ticket, TicketStatus } from '../../entities/ticket.entity';
 import { LotteryEntry } from '../../entities/lottery-entry.entity';
+import { CreateAdminUserDto } from './dto/user.dto';
 
 @Injectable()
 export class AdminService {
@@ -200,11 +202,48 @@ export class AdminService {
         const [users, total] = await queryBuilder.getManyAndCount();
 
         return {
-            users,
+            users: users.map((user) => this.sanitizeUser(user)),
             total,
             page,
             totalPages: Math.ceil(total / limit)
         };
+    }
+
+    async createUser(dto: CreateAdminUserDto) {
+        const email = dto.email.trim().toLowerCase();
+        const existing = await this.userRepository.findOne({ where: { email } });
+        if (existing) {
+            throw new ConflictException('User with this email already exists');
+        }
+
+        const role = dto.role || UserRole.USER;
+        const hashedPassword = await bcrypt.hash(dto.password, 10);
+        const user = this.userRepository.create({
+            email,
+            password: hashedPassword,
+            first_name: dto.first_name?.trim() || null,
+            last_name: dto.last_name?.trim() || null,
+            phone_number: dto.phone_number?.trim() || null,
+            role,
+            assigned_gate: role === UserRole.SCANNER ? dto.assigned_gate?.trim() || null : null,
+            is_active: true,
+        });
+
+        const saved = await this.userRepository.save(user);
+        return this.sanitizeUser(saved);
+    }
+
+    async setUserPassword(userId: string, password: string) {
+        const user = await this.userRepository.findOne({ where: { id: userId } });
+        if (!user) {
+            throw new NotFoundException('User not found');
+        }
+
+        user.password = await bcrypt.hash(password, 10);
+        user.reset_password_token = null;
+        user.reset_password_expires = null;
+        await this.userRepository.save(user);
+        return { message: 'Password updated' };
     }
 
     async updateUserRole(userId: string, role: UserRole) {
@@ -217,5 +256,16 @@ export class AdminService {
 
     async updateUserGate(userId: string, gate: string) {
         return this.userRepository.update(userId, { assigned_gate: gate });
+    }
+
+    private sanitizeUser(user: User) {
+        const {
+            password,
+            reset_password_token,
+            reset_password_expires,
+            fcm_token,
+            ...safe
+        } = user;
+        return safe;
     }
 }
