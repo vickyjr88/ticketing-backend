@@ -1,5 +1,5 @@
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
-import { IsEmail, IsEnum, IsOptional, IsString, MinLength } from 'class-validator';
+import { IsBoolean, IsEmail, IsEnum, IsOptional, IsString, MinLength } from 'class-validator';
 import { UserRole } from '../../../entities/user.entity';
 
 export class CreateAdminUserDto {
@@ -43,4 +43,41 @@ export class SetUserPasswordDto {
     @IsString()
     @MinLength(6)
     password: string;
+}
+
+export class UpdateAdminUserDto {
+    @ApiPropertyOptional({ example: 'scanner@example.com' })
+    @IsOptional()
+    @IsEmail()
+    email?: string;
+
+    @ApiPropertyOptional({ example: 'Jane' })
+    @IsOptional()
+    @IsString()
+    first_name?: string;
+
+    @ApiPropertyOptional({ example: 'Doe' })
+    @IsOptional()
+    @IsString()
+    last_name?: string;
+
+    @ApiPropertyOptional({ example: '+254712345678' })
+    @IsOptional()
+    @IsString()
+    phone_number?: string;
+
+    @ApiPropertyOptional({ enum: UserRole })
+    @IsOptional()
+    @IsEnum(UserRole)
+    role?: UserRole;
+
+    @ApiPropertyOptional({ example: 'Main Entrance' })
+    @IsOptional()
+    @IsString()
+    assigned_gate?: string;
+
+    @ApiPropertyOptional()
+    @IsOptional()
+    @IsBoolean()
+    is_active?: boolean;
 }

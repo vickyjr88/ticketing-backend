@@ -14,17 +14,22 @@ export class UsersService {
     private usersRepository: Repository<User>,
   ) { }
 
+  normalizeEmail(email: string): string {
+    return (email || '').trim().toLowerCase();
+  }
+
   async create(userData: Partial<User>): Promise<User> {
-    // Check if user already exists
-    const existingUser = await this.usersRepository.findOne({
-      where: { email: userData.email },
-    });
+    const email = this.normalizeEmail(userData.email);
+    const existingUser = await this.findByEmail(email);
 
     if (existingUser) {
       throw new ConflictException('User with this email already exists');
     }
 
-    const user = this.usersRepository.create(userData);
+    const user = this.usersRepository.create({
+      ...userData,
+      email,
+    });
     return this.usersRepository.save(user);
   }
 
@@ -37,7 +42,14 @@ export class UsersService {
   }
 
   async findByEmail(email: string): Promise<User | undefined> {
-    return this.usersRepository.findOne({ where: { email } });
+    const normalized = this.normalizeEmail(email);
+    if (!normalized) {
+      return undefined;
+    }
+    return this.usersRepository
+      .createQueryBuilder('user')
+      .where('LOWER(user.email) = :email', { email: normalized })
+      .getOne();
   }
 
   async findAll(): Promise<User[]> {

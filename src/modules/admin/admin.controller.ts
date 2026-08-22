@@ -16,7 +16,7 @@ import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { RolesGuard } from '../auth/guards/roles.guard';
 import { Roles } from '../auth/decorators/roles.decorator';
 import { UserRole } from '../../entities/user.entity';
-import { CreateAdminUserDto, SetUserPasswordDto } from './dto/user.dto';
+import { CreateAdminUserDto, SetUserPasswordDto, UpdateAdminUserDto } from './dto/user.dto';
 
 @ApiTags('admin')
 @Controller('admin')
@@ -50,12 +50,20 @@ export class AdminController {
     @ApiQuery({ name: 'page', required: false, type: Number })
     @ApiQuery({ name: 'limit', required: false, type: Number })
     @ApiQuery({ name: 'role', required: false, enum: UserRole })
+    @ApiQuery({ name: 'search', required: false, type: String })
     async getUsers(
         @Query('page', new DefaultValuePipe(1), ParseIntPipe) page: number,
         @Query('limit', new DefaultValuePipe(15), ParseIntPipe) limit: number,
         @Query('role') role?: string,
+        @Query('search') search?: string,
     ) {
-        return this.adminService.getUsers(page, limit, role);
+        return this.adminService.getUsers(page, limit, role, search);
+    }
+
+    @Get('users/:id')
+    @ApiOperation({ summary: 'Get a single user' })
+    async getUser(@Param('id') id: string) {
+        return this.adminService.getUser(id);
     }
 
     @Post('users')
@@ -71,6 +79,15 @@ export class AdminController {
         @Body() dto: SetUserPasswordDto,
     ) {
         return this.adminService.setUserPassword(id, dto.password);
+    }
+
+    @Patch('users/:id')
+    @ApiOperation({ summary: 'Update user profile, role, and status' })
+    async updateUser(
+        @Param('id') id: string,
+        @Body() dto: UpdateAdminUserDto,
+    ) {
+        return this.adminService.updateUser(id, dto);
     }
 
     @Patch('users/:id/role')

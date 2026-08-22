@@ -188,7 +188,7 @@ export class AdminService {
         };
     }
 
-    async getUsers(page: number = 1, limit: number = 15, role?: string) {
+    async getUsers(page: number = 1, limit: number = 15, role?: string, search?: string) {
         const skip = (page - 1) * limit;
         const queryBuilder = this.userRepository.createQueryBuilder('user')
             .orderBy('user.created_at', 'DESC')
@@ -196,22 +196,115 @@ export class AdminService {
             .take(limit);
 
         if (role) {
-            queryBuilder.where('user.role = :role', { role });
+            queryBuilder.andWhere('user.role = :role', { role });
+        }
+
+        if (search?.trim()) {
+            const q = `%${search.trim().toLowerCase()}%`;
+            queryBuilder.andWhere(
+                '(LOWER(user.email) LIKE :q OR LOWER(COALESCE(user.first_name, \'\')) LIKE :q OR LOWER(COALESCE(user.last_name, \'\')) LIKE :q OR COALESCE(user.phone_number, \'\') LIKE :q)',
+                { q },
+            );
         }
 
         const [users, total] = await queryBuilder.getManyAndCount();
+
+        const roleCountsRaw = await this.userRepository
+            .createQueryBuilder('user')
+            .select('user.role', 'role')
+            .addSelect('COUNT(*)', 'count')
+            .groupBy('user.role')
+            .getRawMany();
+
+        const counts = {
+            total: 0,
+            USER: 0,
+            ADMIN: 0,
+            SCANNER: 0,
+        };
+        for (const row of roleCountsRaw) {
+            const count = parseInt(row.count, 10) || 0;
+            counts[row.role] = count;
+            counts.total += count;
+        }
 
         return {
             users: users.map((user) => this.sanitizeUser(user)),
             total,
             page,
-            totalPages: Math.ceil(total / limit)
+            totalPages: Math.max(1, Math.ceil(total / limit)),
+            counts,
         };
+    }
+
+    async getUser(userId: string) {
+        const user = await this.userRepository.findOne({ where: { id: userId } });
+        if (!user) {
+            throw new NotFoundException('User not found');
+        }
+        return this.sanitizeUser(user);
+    }
+
+    async updateUser(userId: string, dto: {
+        email?: string;
+        first_name?: string;
+        last_name?: string;
+        phone_number?: string;
+        role?: UserRole;
+        assigned_gate?: string;
+        is_active?: boolean;
+    }) {
+        const user = await this.userRepository.findOne({ where: { id: userId } });
+        if (!user) {
+            throw new NotFoundException('User not found');
+        }
+
+        if (dto.email !== undefined) {
+            const email = dto.email.trim().toLowerCase();
+            const existing = await this.userRepository
+                .createQueryBuilder('user')
+                .where('LOWER(user.email) = :email', { email })
+                .andWhere('user.id != :id', { id: userId })
+                .getOne();
+            if (existing) {
+                throw new ConflictException('User with this email already exists');
+            }
+            user.email = email;
+        }
+        if (dto.first_name !== undefined) {
+            user.first_name = dto.first_name?.trim() || null;
+        }
+        if (dto.last_name !== undefined) {
+            user.last_name = dto.last_name?.trim() || null;
+        }
+        if (dto.phone_number !== undefined) {
+            user.phone_number = dto.phone_number?.trim() || null;
+        }
+        if (dto.role !== undefined) {
+            user.role = dto.role;
+            if (dto.role !== UserRole.SCANNER) {
+                user.assigned_gate = null;
+            }
+        }
+        if (dto.assigned_gate !== undefined) {
+            user.assigned_gate = user.role === UserRole.SCANNER
+                ? dto.assigned_gate?.trim() || null
+                : null;
+        }
+        if (dto.is_active !== undefined) {
+            user.is_active = dto.is_active;
+        }
+
+        const saved = await this.userRepository.save(user);
+        return this.sanitizeUser(saved);
     }
 
     async createUser(dto: CreateAdminUserDto) {
         const email = dto.email.trim().toLowerCase();
-        const existing = await this.userRepository.findOne({ where: { email } });
+        const existing = await this.userRepository
+            .createQueryBuilder('user')
+            .where('LOWER(user.email) = :email', { email })
+            .getOne();
         if (existing) {
             throw new ConflictException('User with this email already exists');
         }
