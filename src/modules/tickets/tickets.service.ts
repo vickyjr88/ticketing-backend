@@ -4,7 +4,7 @@ import {
   NotFoundException,
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Repository, DataSource } from 'typeorm';
+import { Repository, DataSource, In } from 'typeorm';
 import { Ticket, TicketType, TicketStatus } from '../../entities/ticket.entity';
 import { TicketTier } from '../../entities/ticket-tier.entity';
 import { Order, PaymentProvider, PaymentStatus } from '../../entities/order.entity';
@@ -400,6 +400,38 @@ export class TicketsService {
       })),
       total: checkIns.length,
     };
+  }
+
+  /**
+   * List ticket holders for an event, including whether each ticket was used.
+   */
+  async getEventTicketHolders(eventId: string) {
+    const tickets = await this.ticketsRepository.find({
+      where: {
+        event_id: eventId,
+        status: In([TicketStatus.ISSUED, TicketStatus.WON, TicketStatus.REDEEMED]),
+      },
+      relations: ['holder', 'purchaser', 'tier'],
+      order: { created_at: 'ASC' },
+    });
+
+    return tickets.map((ticket) => {
+      const person = ticket.holder || ticket.purchaser;
+      const used = ticket.status === TicketStatus.REDEEMED || Boolean(ticket.checked_in_at);
+      return {
+        ticket_id: ticket.id,
+        holder_name: [person?.first_name, person?.last_name].filter(Boolean).join(' ').trim() || 'Guest',
+        holder_email: person?.email || '',
+        holder_phone: person?.phone_number || '',
+        tier: ticket.tier?.name || '',
+        ticket_type: ticket.type,
+        status: ticket.status,
+        used,
+        used_label: used ? 'Yes' : 'No',
+        checked_in_at: ticket.checked_in_at,
+        checked_in_gate: ticket.checked_in_gate || '',
+      };
+    });
   }
 
   /**

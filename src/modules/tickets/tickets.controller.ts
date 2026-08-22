@@ -85,6 +85,14 @@ export class TicketsController {
   }
 
   @UseGuards(JwtAuthGuard, AdminGuard)
+  @Get('event/:eventId/holders')
+  @ApiBearerAuth()
+  @ApiOperation({ summary: 'List ticket holders for an event with used/unused status' })
+  async getEventTicketHolders(@Param('eventId') eventId: string) {
+    return this.ticketsService.getEventTicketHolders(eventId);
+  }
+
+  @UseGuards(JwtAuthGuard, AdminGuard)
   @Get('event/:eventId/check-ins')
   @ApiBearerAuth()
   @ApiOperation({ summary: 'Get recent check-ins for an event (Admin only)' })
